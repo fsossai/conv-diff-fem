@@ -233,7 +233,7 @@ type CSRMAT
    !> @brief matrix pattern
    type(Pattern)              :: patt
    !> @brief matrix coefficients
-   real(kind=double), pointer :: coef(:) => null()
+   real(kind=dp), pointer :: coef(:) => null()
 end type
 
 interface assignment (=)
@@ -470,7 +470,7 @@ contains
    integer                       :: i,j,mm,nn
    integer                       :: nrows,nterm
    integer, pointer              :: iat(:),ja(:)
-   real(kind=double), pointer    :: coef(:)
+   real(kind=dp), pointer    :: coef(:)
    character*20, parameter       :: frmt='(i7,1x,i7,1x,e20.10)'
 
    !-----------------------------------------------------------------------------------------

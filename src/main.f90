@@ -1,6 +1,7 @@
 program main
 
 use class_CSRMAT
+use utils
 
 implicit none
 
@@ -19,11 +20,11 @@ integer                        :: i,ierr
 
 ! Local allocatable variables
 ! Local allocatable variables
-real(kind=double), allocatable :: vec_x(:),vec_y(:)
+real(kind=dp), allocatable :: vec_x(:),vec_y(:),x(:)
 
 ! Handles
 integer, pointer               :: iat(:),ja(:)
-real(kind=double), pointer     :: coef(:)
+real(kind=dp), pointer     :: coef(:)
 
 ! Open the input file
 open(1,file='inputs/test1.param',status='old')
@@ -52,24 +53,21 @@ call readmat(11,BINREAD,mat_A,ierr)
 if (ierr /= 0) stop 'Error in reading mat_A'
 
 ! Allocate vec_x and vec_y
-allocate(vec_x(nn),vec_y(nn),stat=ierr)
+allocate(vec_x(nn),vec_y(nn),x(nn),stat=ierr)
 if (ierr /= 0) stop 'Error in allocating vec_x and vec_y'
 
 ! Set all ones in vec_x
-vec_x = 1._double
+vec_x = 1._dp
 
 ! Set handles to mat_A
 iat  => mat_A%patt%iat
 ja   => mat_A%patt%ja
 coef => mat_A%coef
 
-! Compute matrix by vector product
-call axbnsy(nn,nn,nt,iat,ja,coef,vec_x,vec_y)
 
-! Print the result
-open(10,file='vec_y.txt')
-write(10,'(i10,e15.6)') (i,vec_y(i),i=1,nn)
-close(10)
+! Core computations
+call bicgstab(mat_A, vec_x, x)
+call write_mat('abc.txt', vec_x)
 
 ! Deallocate the matrix
 ierr = dlt_CSRMAT(mat_A)

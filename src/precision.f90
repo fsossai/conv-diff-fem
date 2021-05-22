@@ -12,8 +12,8 @@ module class_precision
 
 implicit none
 
-integer, parameter :: single = 4
-integer, parameter :: double = 8
+integer, parameter :: sp = 4
+integer, parameter :: dp = 8
 
 
 end module class_precision

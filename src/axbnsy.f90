@@ -15,8 +15,8 @@ subroutine axbnsy(n,ntot,nterm,iat,ja,coef_A,xvec,bvec)
 !  nterm  : # of matrix A non-zeroes 
 !  iat    : integer array of the pointers to the beginning of each row of matrix A
 !  ja     : integer array of the column indices for matrix A
-!  coef_A : real(kind=double) array of the matrix coefficients
-!  xvec   : real(kind=double) array
+!  coef_A : real(kind=dp) array of the matrix coefficients
+!  xvec   : real(kind=dp) array
 !  bvec   : matrix-vector product [A]*xvec
 !
 !-----------------------------------------------------------------------------------------
@@ -27,11 +27,11 @@ implicit none
 
 ! Input variables
 integer, intent(in)           :: n,ntot,nterm
-real(kind=double), intent(in) :: coef_A(nterm),xvec(ntot)
+real(kind=dp), intent(in)     :: coef_A(nterm),xvec(ntot)
 integer, intent(in)           :: ja(nterm),iat(n+1)
 
 ! Ouput variables
-real(kind=double), intent(out) :: bvec(n)
+real(kind=dp), intent(out) :: bvec(n)
 
 ! Local variables
 integer i,k,m,mm

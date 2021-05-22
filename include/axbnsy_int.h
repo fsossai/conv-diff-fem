@@ -7,10 +7,10 @@ interface axbnsy_int
 
    ! Input variables
    integer, intent(in)           :: n,ntot,nterm
-   real(kind=double), intent(in) :: coef_A(nterm),xvec(ntot)
+   real(kind=dp), intent(in)     :: coef_A(nterm),xvec(ntot)
    integer, intent(in)           :: ja(nterm),iat(n+1)
    ! Ouput variables
-   real(kind=double), intent(out) :: bvec(n)
+   real(kind=dp), intent(out) :: bvec(n)
 
    end subroutine axbnsy
 end interface axbnsy_int
