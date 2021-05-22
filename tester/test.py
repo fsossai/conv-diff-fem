@@ -1,6 +1,10 @@
-import numpy as np
+"""
+Simple utilities to parse sparse matrix and vectors.
+The purpose is to asses whether some performed calculations
+are correct.
+"""
 
-filename = '../inputs/mat63.txt'
+import numpy as np
 
 def read_txt_mat(filename):
     """reads a sparse matrix from a text file"""
