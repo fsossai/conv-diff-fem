@@ -2,6 +2,7 @@ program main
 
 use class_CSRMAT
 use utils
+use class_bicgstab
 
 implicit none
 
@@ -19,12 +20,11 @@ integer                        :: nn,nt
 integer                        :: i,ierr
 
 ! Local allocatable variables
-! Local allocatable variables
-real(kind=dp), allocatable :: vec_x(:),vec_y(:),x(:)
+real(dp), allocatable :: b(:),vec_y(:),x(:)
 
 ! Handles
 integer, pointer               :: iat(:),ja(:)
-real(kind=dp), pointer     :: coef(:)
+real(dp), pointer     :: coef(:)
 
 ! Open the input file
 open(1,file='inputs/test1.param',status='old')
@@ -52,12 +52,12 @@ if (ierr /= 0) stop 'Error in allocating mat_A'
 call readmat(11,BINREAD,mat_A,ierr)
 if (ierr /= 0) stop 'Error in reading mat_A'
 
-! Allocate vec_x and vec_y
-allocate(vec_x(nn),vec_y(nn),x(nn),stat=ierr)
-if (ierr /= 0) stop 'Error in allocating vec_x and vec_y'
+! Allocate b and vec_y
+allocate(b(nn),vec_y(nn),x(nn),stat=ierr)
+if (ierr /= 0) stop 'Error in allocating b and vec_y'
 
-! Set all ones in vec_x
-vec_x = 1._dp
+! Set all ones in b
+b = 1.0_dp
 
 ! Set handles to mat_A
 iat  => mat_A%patt%iat
@@ -66,16 +66,18 @@ coef => mat_A%coef
 
 
 ! Core computations
-call bicgstab(mat_A, vec_x, x)
-call write_mat('abc.txt', vec_x)
+call bicgstab(mat_A, b, x)
+!call write_csrmat('abc.txt', mat_A)
+call write_vec('solution.txt', x)
+
 
 ! Deallocate the matrix
 ierr = dlt_CSRMAT(mat_A)
 if (ierr /= 0) stop 'Error in deallocating mat_A'
 
-! Deallocate vec_x and vec_y
-deallocate(vec_x,vec_y,stat=ierr)
-if (ierr /= 0) stop 'Error in deallocating vec_x and vec_y'
+! Deallocate b and vec_y
+deallocate(b,vec_y,stat=ierr)
+if (ierr /= 0) stop 'Error in deallocating b and vec_y'
 
 write(*,'(a)') 'Done'
 end program main

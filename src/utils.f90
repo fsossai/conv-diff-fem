@@ -20,8 +20,8 @@ contains
         type(CSRMAT), intent(in) :: A
         integer, pointer :: iat(:), ja(:)
         real(dp), pointer :: coef(:)
-        character(len=19) :: frmt = '(i7,1x,i7,1x,e15.8)'
-        integer :: n,i,j,rlen,c_start,c_end
+        !character(len=19) :: frmt = '(i7,1x,i7,1x,e15.8)'
+        integer :: n,i,j,c_start,c_end
 
         ! creating handles
         iat => A%patt%iat
@@ -41,7 +41,5 @@ contains
         
         close(unit=1)
     end subroutine
-
-
 
 end module utils
