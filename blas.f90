@@ -16,16 +16,19 @@ contains
         end do
     end subroutine
 
-    subroutine axpby(alpha, x, beta, y, z)
-        real(dp), dimension(:), intent(in) :: x, y
-        real(dp), intent(in) :: alpha, beta
+    subroutine axpby(z, alpha, x, beta, y)
         real(dp), allocatable, intent(out) :: z(:)
+        real(dp), intent(in) :: alpha
+        real(dp), intent(in) :: x(:)
+        real(dp), optional, intent(in) :: beta
+        real(dp), optional, intent(in) :: y(:)
+        real(dp) :: beta_local
         integer :: i,n
 
         n = size(x)
 
         ! dimension check
-        if (n .ne. size(y)) then
+        if (present(y) .and. n .ne. size(y)) then
             print *, 'ERROR: dimension mismatch (in axpby).'
             stop
         end if
@@ -37,16 +40,32 @@ contains
         end if
 
         ! computation
-        do i = 1,n
-            z(i) = alpha * x(i) + beta * y(i)
-        end do
+        if (present(y)) then
+            if (present(beta)) then
+                beta_local = beta
+            else
+                beta_local = 1.0_dp
+            end if
+            do i = 1,n
+                z(i) = alpha * x(i) + beta_local * y(i)
+            end do
+        else
+            do i = 1,n
+                z(i) = alpha * x(i)
+            end do
+        end if
+
+        
     end subroutine
 
-    subroutine amxpby(alpha, A, x, beta, y, z)
-        type(CSRMAT), intent(in) :: A
-        real(dp), dimension(:), intent(in) :: x, y
+    subroutine amxpby(z, alpha, A, x, beta, y)
         real(dp), allocatable, intent(out) :: z(:)
-        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: alpha
+        type(CSRMAT), intent(in) :: A
+        real(dp), intent(in) :: x(:)
+        real(dp), optional, intent(in) :: beta
+        real(dp), optional, intent(in) :: y(:)
+        real(dp) :: beta_local
         integer :: i,j,n,c_start,c_end
 
         ! handles for the matrix
@@ -73,13 +92,49 @@ contains
         ja => A%patt%ja
 
         ! computation
-        do i=1,n
-            c_start = iat(i)
-            c_end = iat(i+1) - 1
-            do j = c_start,c_end
-                z(i) = z(i) + coef(j) * x(ja(j))
+        if (present(y)) then
+            if (present(beta)) then
+                beta_local = beta
+            else
+                beta_local = 1.0_dp
+            end if
+            do i=1,n
+                c_start = iat(i)
+                c_end = iat(i+1) - 1
+                do j = c_start,c_end
+                    z(i) = z(i) + coef(j) * x(ja(j))
+                end do
+                z(i) = alpha * z(i) + beta * y(i)
             end do
-            z(i) = alpha * z(i) + beta * y(i)
+        else
+            do i=1,n
+                c_start = iat(i)
+                c_end = iat(i+1) - 1
+                do j = c_start,c_end
+                    z(i) = z(i) + coef(j) * x(ja(j))
+                end do
+                z(i) = alpha * z(i)
+            end do
+        end if
+    end subroutine
+
+    subroutine inner_prod(x, y, z)
+        real(dp), dimension(:), intent(in) :: x, y
+        real(dp), intent(out) :: z
+        integer :: i,n
+
+        n = size(x)
+
+        ! dimension check
+        if (n .ne. size(y)) then
+            print *, 'ERROR: dimension mismatch (in axpby).'
+            stop
+        end if
+
+        ! computation
+        z = 0.0_dp
+        do i = 1,n
+            z = z + x(i) * y(i)
         end do
     end subroutine
 
