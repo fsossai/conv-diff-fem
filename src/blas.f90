@@ -17,7 +17,7 @@ contains
     end subroutine
 
     subroutine axpby(z, alpha, x, beta, y)
-        real(dp), allocatable, intent(out) :: z(:)
+        real(dp), allocatable, intent(inout) :: z(:)
         real(dp), intent(in) :: alpha
         real(dp), intent(in) :: x(:)
         real(dp), optional, intent(in) :: beta
@@ -47,11 +47,11 @@ contains
                 beta_local = 1.0_dp
             end if
             do i = 1,n
-                z(i) = alpha * x(i) + beta_local * y(i)
+                z(i) = z(i) + alpha * x(i) + beta_local * y(i)
             end do
         else
             do i = 1,n
-                z(i) = alpha * x(i)
+                z(i) = z(i) + alpha * x(i)
             end do
         end if
 
@@ -118,9 +118,9 @@ contains
         end if
     end subroutine
 
-    subroutine inner_prod(x, y, z)
+    function inner_prod(x, y) result(z)
+        real(dp) :: z
         real(dp), dimension(:), intent(in) :: x, y
-        real(dp), intent(out) :: z
         integer :: i,n
 
         n = size(x)
@@ -136,6 +136,6 @@ contains
         do i = 1,n
             z = z + x(i) * y(i)
         end do
-    end subroutine
+    end function
 
 end module class_BLAS
