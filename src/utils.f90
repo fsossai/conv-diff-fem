@@ -42,4 +42,20 @@ contains
         close(unit=1)
     end subroutine
 
+    subroutine print_vec_compact(x, cols)
+        real(dp), intent(in) :: x(:)
+        integer, optional, intent(in) :: cols
+        integer :: i,j,n,c
+        n = size(x)
+        
+        c = 5 ! default value
+        if (present(cols)) c = cols
+
+        do i = 1,n,c
+            do j = 0,c-1
+                write(*, '(1f15.8x)', advance='no') x(i+j)
+            end do
+            print *
+        end do
+    end subroutine
 end module utils
