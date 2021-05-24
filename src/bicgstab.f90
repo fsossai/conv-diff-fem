@@ -8,6 +8,7 @@ subroutine bicgstab(A, b, x)
     use class_precision
     use class_CSRMAT
     use class_BLAS
+    use utils
 
     type(CSRMAT), intent(in)            :: A
     real(dp), intent(in)                :: b(:)
@@ -15,7 +16,7 @@ subroutine bicgstab(A, b, x)
     integer :: j,n
     real(dp) :: alpha, beta, omega, r_r0
     real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, A_p, A_s
-    integer, parameter :: max_it = 1
+    integer, parameter :: max_it = 100
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
@@ -52,22 +53,23 @@ subroutine bicgstab(A, b, x)
     do j = 1,max_it
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
         r_r0 = inner_prod(r, r0)
+        call reset(A_p)
         call amxpby(A_p, 1.0_dp, A, p)
         alpha = r_r0 / inner_prod(A_p, r0)
-        
+
         ! s_j = r_j - alpha_j A p_j
         s = r - alpha * A_p
         
         ! omega_j = (A s_j, s_j) / (A s_j, A s_j)
+        call reset(A_s)
         call amxpby(A_s, 1.0_dp, A, s)
         omega = inner_prod(A_s, s) / inner_prod(A_s, A_s)
 
         ! x_j+1 = x_j + alpha_j p_j + omega_j s_j
-        !call axpby(x, alpha, p, 1.0_dp, x)
-        !call axpby(x, omega, s, 1.0_dp, x)
         call axpby(x, alpha, p, omega, s)
         
         ! r_j+1 = s_j - omega_j A s_j
+        call reset(r_new)
         call axpby(r_new, -omega, A_s, 1.0_dp, s)
         
         ! beta_j = (r_j+1, r_0^) / (r_j, r_0^) * (alpha_j / omega_j)
@@ -78,7 +80,7 @@ subroutine bicgstab(A, b, x)
 
         r = r_new
     end do
-    
+    deallocate(r, r0, r_new, p, s, A_p, A_s)
 end subroutine
 
 
