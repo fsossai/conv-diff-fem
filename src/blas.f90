@@ -53,7 +53,7 @@ contains
     end subroutine
 
     subroutine amxpby(z, alpha, A, x, beta, y)
-        real(dp), intent(out) :: z(:)
+        real(dp), intent(inout) :: z(:)
         real(dp), intent(in) :: alpha
         type(CSRMAT), intent(in) :: A
         real(dp), intent(in) :: x(:)
@@ -124,6 +124,12 @@ contains
         do i = 1,n
             z = z + x(i) * y(i)
         end do
+    end function
+
+    function norm(x) result(z)
+        real(dp), intent(in) :: x(:)
+        real(dp) :: z
+        z = sqrt(inner_prod(x, x))
     end function
 
 end module class_BLAS

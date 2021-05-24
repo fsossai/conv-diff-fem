@@ -17,6 +17,7 @@ subroutine bicgstab(A, b, x)
     real(dp) :: alpha, beta, omega, r_r0
     real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, A_p, A_s
     integer, parameter :: max_it = 100
+    real(dp), parameter :: tolerance = 1e-5
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
@@ -51,6 +52,8 @@ subroutine bicgstab(A, b, x)
     p = r
     
     do j = 1,max_it
+        if (norm(r) <= tolerance) exit
+        
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
         r_r0 = inner_prod(r, r0)
         call reset(A_p)
@@ -80,6 +83,7 @@ subroutine bicgstab(A, b, x)
 
         r = r_new
     end do
+    print *, 'BiCGSTAB iterations:', j-1
     deallocate(r, r0, r_new, p, s, A_p, A_s)
 end subroutine
 
