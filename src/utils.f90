@@ -11,7 +11,7 @@ contains
         
         n = size(x)
         open(unit=1, file=name)
-        write(unit=1, fmt='(i10,e15.8)') (i, x(i), i=1,n)
+        write(unit=1, fmt='(i10,1x,e15.8)') (i, x(i), i=1,n)
         close(unit=1)
     end subroutine
 
@@ -20,7 +20,7 @@ contains
         type(CSRMAT), intent(in) :: A
         integer, pointer :: iat(:), ja(:)
         real(dp), pointer :: coef(:)
-        !character(len=19) :: frmt = '(i7,1x,i7,1x,e15.8)'
+        character(len=19) :: frmt = '(i7,1x,i7,1x,e15.8)'
         integer :: n,i,j,c_start,c_end
 
         ! creating handles
@@ -35,7 +35,7 @@ contains
             c_start = iat(i)
             c_end = iat(i+1) - 1
             do j = c_start,c_end
-                write(1,*) i,ja(j),coef(j)
+                write(1,frmt) i,ja(j),coef(j)
             end do
         end do
         

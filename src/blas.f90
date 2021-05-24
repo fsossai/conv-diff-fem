@@ -17,7 +17,7 @@ contains
     end subroutine
 
     subroutine axpby(z, alpha, x, beta, y)
-        real(dp), allocatable, intent(inout) :: z(:)
+        real(dp), intent(inout) :: z(:)
         real(dp), intent(in) :: alpha
         real(dp), intent(in) :: x(:)
         real(dp), optional, intent(in) :: beta
@@ -31,12 +31,6 @@ contains
         if (present(y) .and. n .ne. size(y)) then
             print *, 'ERROR: dimension mismatch (in axpby).'
             stop
-        end if
-
-        ! automatic memory allocation
-        if (.not.allocated(z)) then
-            allocate(z(n))
-            call reset(z)
         end if
 
         ! computation
@@ -59,7 +53,7 @@ contains
     end subroutine
 
     subroutine amxpby(z, alpha, A, x, beta, y)
-        real(dp), allocatable, intent(out) :: z(:)
+        real(dp), intent(out) :: z(:)
         real(dp), intent(in) :: alpha
         type(CSRMAT), intent(in) :: A
         real(dp), intent(in) :: x(:)
@@ -79,13 +73,7 @@ contains
             print *, 'ERROR: dimension mismatch (in amxpby).'
             stop
         end if
-        
-        ! automatic memory allocation
-        if (.not.allocated(z)) then
-            allocate(z(n))
-            call reset(z)
-        end if
-
+      
         ! setting handles 
         coef => A%coef
         iat => A%patt%iat

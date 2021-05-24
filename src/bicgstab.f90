@@ -11,20 +11,17 @@ subroutine bicgstab(A, b, x)
 
     type(CSRMAT), intent(in)            :: A
     real(dp), intent(in)                :: b(:)
-    real(dp), allocatable, intent(out)  :: x(:)
+    real(dp), intent(out)               :: x(:)
     integer :: j,n
     real(dp) :: alpha, beta, omega, temp1
     real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, temp2, temp3
-    integer, parameter :: max_it = 100
+    integer, parameter :: max_it = 1
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
     integer, dimension(:), pointer :: iat => null(), ja => null()
 
     n = size(b)
-
-    print *, A%patt%nrows,n
-    
     ! dimension check
     if (A%patt%nrows .ne. n) then
         print *, 'ERROR: dimension mismatch (in BiCGSTAB).'
@@ -36,17 +33,18 @@ subroutine bicgstab(A, b, x)
     iat => A%patt%iat
     ja => A%patt%ja
 
-    if (.not.allocated(x)) allocate(x(n))
-
     allocate(r(n), r0(n), r_new(n), p(n), s(n), temp2(n), temp3(n))
 
     ! Start of BiCGSTAB algorithm
     ! r_0^ = b - A x_0
     call amxpby(r, -1.0_dp, A, x, 1.0_dp, b)
+    
     ! r_0^ arbitrary
     r0 = r
+    
     ! p0 = r0
     p = r
+    
     do j = 1,max_it
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
         temp1 = inner_prod(r, r0)
