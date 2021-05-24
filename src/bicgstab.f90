@@ -13,8 +13,8 @@ subroutine bicgstab(A, b, x)
     real(dp), intent(in)                :: b(:)
     real(dp), intent(out)               :: x(:)
     integer :: j,n
-    real(dp) :: alpha, beta, omega, temp1
-    real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, temp2, temp3
+    real(dp) :: alpha, beta, omega, r_r0
+    real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, A_p, A_s
     integer, parameter :: max_it = 1
 
     ! handles for the matrix
@@ -33,10 +33,14 @@ subroutine bicgstab(A, b, x)
     iat => A%patt%iat
     ja => A%patt%ja
 
-    allocate(r(n), r0(n), r_new(n), p(n), s(n), temp2(n), temp3(n))
+    allocate(r(n), r0(n), r_new(n), p(n), s(n), A_p(n), A_s(n))
 
     ! Start of BiCGSTAB algorithm
-    ! r_0^ = b - A x_0
+    
+    ! the initial guess is the zero-vector
+    x = 0.0_dp
+    
+    ! r_0 = b - A x_0
     call amxpby(r, -1.0_dp, A, x, 1.0_dp, b)
     
     ! r_0^ arbitrary
@@ -47,29 +51,30 @@ subroutine bicgstab(A, b, x)
     
     do j = 1,max_it
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
-        temp1 = inner_prod(r, r0)
-        call amxpby(temp2, 1.0_dp, A, p)
-        alpha = temp1 / inner_prod(temp2, r0)
+        r_r0 = inner_prod(r, r0)
+        call amxpby(A_p, 1.0_dp, A, p)
+        alpha = r_r0 / inner_prod(A_p, r0)
         
         ! s_j = r_j - alpha_j A p_j
-        s = r - alpha * temp2
+        s = r - alpha * A_p
         
         ! omega_j = (A s_j, s_j) / (A s_j, A s_j)
-        call amxpby(temp3, 1.0_dp, A, s)
-        omega = inner_prod(temp3, s) / inner_prod(temp3, temp3)
+        call amxpby(A_s, 1.0_dp, A, s)
+        omega = inner_prod(A_s, s) / inner_prod(A_s, A_s)
 
         ! x_j+1 = x_j + alpha_j p_j + omega_j s_j
-        call axpby(x, alpha, p, 1.0_dp, x)
-        call axpby(x, omega, s, 1.0_dp, x)
+        !call axpby(x, alpha, p, 1.0_dp, x)
+        !call axpby(x, omega, s, 1.0_dp, x)
+        call axpby(x, alpha, p, omega, s)
         
         ! r_j+1 = s_j - omega_j A s_j
-        call axpby(r_new, -omega, temp3, 1.0_dp, s)
+        call axpby(r_new, -omega, A_s, 1.0_dp, s)
         
         ! beta_j = (r_j+1, r_0^) / (r_j, r_0^) * (alpha_j / omega_j)
-        beta = inner_prod(r_new, r0) / temp1 * (alpha / omega)
+        beta = inner_prod(r_new, r0) / r_r0 * (alpha / omega)
 
-        ! p_j+1 = r_j+1 + beta_j (p_j - omega(j) A p_j)
-        p = r_new + beta * (p - omega * temp2)
+        ! p_j+1 = r_j+1 + beta_j (p_j - omega_j A p_j)
+        p = r_new + beta * (p - omega * A_p)
 
         r = r_new
     end do
