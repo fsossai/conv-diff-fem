@@ -1,4 +1,4 @@
-module utils
+module class_utils
     use class_precision
     use class_CSRMAT
     
@@ -20,7 +20,7 @@ contains
         type(CSRMAT), intent(in) :: A
         integer, pointer :: iat(:), ja(:)
         real(dp), pointer :: coef(:)
-        character(len=19) :: frmt = '(i7,1x,i7,1x,1e15.8)'
+        character(len=20) :: frmt = '(i7,1x,i7,1x,1e15.8)'
         integer :: n,i,j,c_start,c_end
 
         ! creating handles
@@ -58,4 +58,4 @@ contains
             print *
         end do
     end subroutine
-end module utils
+end module class_utils

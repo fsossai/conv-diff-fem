@@ -1,7 +1,7 @@
 program main
 
 use class_CSRMAT
-use utils
+use class_utils
 use class_bicgstab
 use omp_lib
 

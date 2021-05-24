@@ -8,7 +8,7 @@ subroutine bicgstab(A, b, x, tol, max_it)
     use class_precision
     use class_CSRMAT
     use class_BLAS
-    use utils
+    use class_utils
 
     type(CSRMAT), intent(in)            :: A
     real(dp), intent(in)                :: b(:)

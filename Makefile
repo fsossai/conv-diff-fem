@@ -7,16 +7,16 @@ all: csrmat utils blas
 	$(cc) $(flags) -I$(include_dir) $(source_dir)/*.f90 $(source_dir)/*.f
 
 blas: $(source_dir)/blas.f90 csrmat
-	$(cc) $(flags) -c $< -o $(source_dir)/class_blas.mod
+	$(cc) $(flags) -c $<
 
 csrmat: $(source_dir)/CSRMAT.f90 precision
-	$(cc) $(flags) -c $< -o $(source_dir)/class_csrmat.mod
+	$(cc) $(flags) -c $<
 
 precision: $(source_dir)/precision.f90
-	$(cc) $(flags) -c $< -o $(source_dir)/class_precision.mod
+	$(cc) $(flags) -c $<
 
 utils: $(source_dir)/utils.f90 precision
-	$(cc) $(flags) -c $< -o $(source_dir)/utils.mod
+	$(cc) $(flags) -c $<
 
 clean:
 	rm *.mod *.o
