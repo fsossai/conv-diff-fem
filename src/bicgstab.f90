@@ -4,7 +4,7 @@ module class_bicgstab
     implicit none
 contains
 
-subroutine bicgstab(A, b, x)
+subroutine bicgstab(A, b, x, tol, max_it)
     use class_precision
     use class_CSRMAT
     use class_BLAS
@@ -13,18 +13,24 @@ subroutine bicgstab(A, b, x)
     type(CSRMAT), intent(in)            :: A
     real(dp), intent(in)                :: b(:)
     real(dp), intent(out)               :: x(:)
-    integer :: j,n
-    real(dp) :: alpha, beta, omega, r_r0
+    real(dp), optional, intent(in)      :: tol
+    integer, optional, intent(in)       :: max_it
+    integer :: j, n, max_iterations
+    real(dp) :: alpha, beta, omega, r_r0, tolerance
     real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, A_p, A_s
-    integer, parameter :: max_it = 100
-    real(dp), parameter :: tolerance = 1e-5
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
     integer, dimension(:), pointer :: iat => null(), ja => null()
 
-    n = size(b)
+    ! setting default values
+    max_iterations = size(b) * 10
+    tolerance = 1e-5         
+    if (present(tol)) tolerance = tol
+    if (present(max_it)) max_iterations = max_it
+    
     ! dimension check
+    n = size(b)
     if (A%patt%nrows .ne. n) then
         print *, 'ERROR: dimension mismatch (in BiCGSTAB).'
         stop
@@ -51,7 +57,7 @@ subroutine bicgstab(A, b, x)
     ! p0 = r0
     p = r
     
-    do j = 1,max_it
+    do j = 1,max_iterations
         if (norm(r) <= tolerance) exit
         
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
