@@ -3,6 +3,7 @@ program main
 use class_CSRMAT
 use utils
 use class_bicgstab
+use omp_lib
 
 implicit none
 
@@ -25,6 +26,7 @@ real(dp), allocatable :: b(:),vec_y(:),x(:)
 ! Handles
 integer, pointer               :: iat(:),ja(:)
 real(dp), pointer     :: coef(:)
+real(dp) :: timer
 
 ! Open the input file
 open(1,file='inputs/test1.param',status='old')
@@ -56,9 +58,6 @@ if (ierr /= 0) stop 'Error in reading mat_A'
 allocate(b(nn),vec_y(nn),x(nn),stat=ierr)
 if (ierr /= 0) stop 'Error in allocating b and vec_y'
 
-! Set all ones in b
-b = 1.0_dp
-
 ! Set handles to mat_A
 iat  => mat_A%patt%iat
 ja   => mat_A%patt%ja
@@ -66,10 +65,14 @@ coef => mat_A%coef
 
 
 ! Core computations
-call bicgstab(mat_A, b, x)
-!call write_csrmat('abc.txt', mat_A)
+print *, 'Matrix size:', nn
+b = 1.0_dp
+timer = omp_get_wtime()
+call bicgstab(mat_A, b, x, tol=1e-6_dp)
+timer = omp_get_wtime() - timer
+!call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)
-
+print '(a,1f10.6)', 'Elapsed time (s):', timer
 
 ! Deallocate the matrix
 ierr = dlt_CSRMAT(mat_A)

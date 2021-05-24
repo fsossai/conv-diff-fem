@@ -7,7 +7,7 @@ are correct.
 import numpy as np
 from scipy.sparse.linalg import bicgstab as scipy_bicgstab
 import matplotlib.pyplot as plt
-
+from time import time
 
 def bicgstab(A, b, toll=1e-5, max_it=100):
     N, _ = A.shape
@@ -32,19 +32,28 @@ def bicgstab(A, b, toll=1e-5, max_it=100):
     return x,r,j
 
 def solve(A, b, toll=1e-05, max_it=100, plot=True):
+    t = time()
     x, r, it = bicgstab(A, b, toll, max_it)
+    t = time() - t
+    print('Elapsed time (raw bicgstab):', t)
 
+    # solving with matrix inversion
+    t = time()
+    sol = np.linalg.inv(A).dot(b)
+    t = time() - t
+    print('Elapsed time (matrix inv):', t)
+    
     print('Error:', np.linalg.norm(b - A.dot(x[-1])))
     print('Residual:', np.linalg.norm(r[-1]))
     print('Min residual:', min([np.linalg.norm(v) for v in r]))
     print('Iteration:', it)
     print()
-    print('Solution:', np.linalg.inv(A).dot(b))
+    print('Solution:', sol)
     print('Found:', x[-1])
     if plot:
         plt.plot(range(len(r)), [np.linalg.norm(v) for v in r], '.-')
         plt.yscale('log')
-        plt.xticks(range(it+1), range(it+1))
+        #plt.xticks(range(0,it+1,5), range(0,it+1,5))
         plt.grid(True)
         plt.show()
 
@@ -72,9 +81,20 @@ def read_txt_vec(filename, N):
             v[int(s[0]) - 1] = float(s[1])
     return v
 
-A = read_txt_mat('../inputs/mat63.txt')
+A = read_txt_mat('../inputs/mat1024.txt')
 N = A.shape[0]
 #y = read_txt_vec('../solution.txt', N)
 b = np.ones((N,))
 
-solve(A, b, toll=1e-5, max_it=100)
+t = time()
+x, _, = scipy_bicgstab(A, b, tol=1e-6)
+t = time() - t
+print('scipy:')
+print(x)
+print(f'Elapsed time:', t)
+
+t = time()
+solve(A, b, toll=1e-6, max_it=N*10)
+t = time() - t
+print(f'Elapsed time:', t)
+

@@ -25,7 +25,7 @@ subroutine bicgstab(A, b, x, tol, max_it)
 
     ! setting default values
     max_iterations = size(b) * 10
-    tolerance = 1e-5         
+    tolerance = 1e-5_dp
     if (present(tol)) tolerance = tol
     if (present(max_it)) max_iterations = max_it
     
