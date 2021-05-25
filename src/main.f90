@@ -65,6 +65,7 @@ b = 1.0_dp
 timer = omp_get_wtime()
 call bicgstab(mat_A, b, x, tol=1e-6_dp)
 timer = omp_get_wtime() - timer
+
 !call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)
 print '(a,1f10.6)', 'Elapsed time (s):', timer

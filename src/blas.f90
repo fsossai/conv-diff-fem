@@ -12,7 +12,7 @@ contains
         real(dp), intent(out) :: x(:)
         integer :: i,n
         n = size(x)
-        !$omp parallel do
+        !!$omp parallel do
         do i = 1,n
             x(i) = 0.0_dp
         end do
@@ -62,7 +62,7 @@ contains
         real(dp), intent(in) :: x(:)
         real(dp), optional, intent(in) :: beta
         real(dp), optional, intent(in) :: y(:)
-        real(dp) :: beta_local
+        real(dp) :: beta_local, partial
         integer :: i,j,n,c_start,c_end
 
         ! handles for the matrix
@@ -89,24 +89,26 @@ contains
             else
                 beta_local = 1.0_dp
             end if
-            !$omp parallel do private(j)
+            !$omp parallel do private(j,partial)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
+                partial = z(i)
                 do j = c_start,c_end
-                    z(i) = z(i) + coef(j) * x(ja(j))
+                    partial = partial + coef(j) * x(ja(j))
                 end do
-                z(i) = alpha * z(i) + beta * y(i)
+                z(i) = alpha * partial + beta * y(i)
             end do
         else
-            !$omp parallel do private(j)
+            !$omp parallel do private(j,partial)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
+                partial = z(i)
                 do j = c_start,c_end
-                    z(i) = z(i) + coef(j) * x(ja(j))
+                    partial = partial + coef(j) * x(ja(j))
                 end do
-                z(i) = alpha * z(i)
+                z(i) = alpha * partial
             end do
         end if
     end subroutine
@@ -126,7 +128,7 @@ contains
 
         ! computation
         z = 0.0_dp
-        !$omp parallel do reduction(+:z)
+        !!$omp parallel do reduction(+:z)
         do i = 1,n
             z = z + x(i) * y(i)
         end do
