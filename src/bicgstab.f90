@@ -9,6 +9,7 @@ subroutine bicgstab(A, b, x, tol, max_it)
     use class_CSRMAT
     use class_BLAS
     use class_utils
+    use omp_lib
 
     type(CSRMAT), intent(in)            :: A
     real(dp), intent(in)                :: b(:)
@@ -89,7 +90,9 @@ subroutine bicgstab(A, b, x, tol, max_it)
 
         r = r_new
     end do
+    
     print *, 'BiCGSTAB iterations:', j-1
+
     deallocate(r, r0, r_new, p, s, A_p, A_s)
 end subroutine
 

@@ -42,7 +42,7 @@ def solve(A, b, toll=1e-05, max_it=100, plot=True):
     sol = np.linalg.inv(A).dot(b)
     t = time() - t
     print('Elapsed time (matrix inv):', t)
-    
+
     print('Error:', np.linalg.norm(b - A.dot(x[-1])))
     print('Residual:', np.linalg.norm(r[-1]))
     print('Min residual:', min([np.linalg.norm(v) for v in r]))
@@ -81,20 +81,23 @@ def read_txt_vec(filename, N):
             v[int(s[0]) - 1] = float(s[1])
     return v
 
-A = read_txt_mat('../inputs/mat1024.txt')
+A = read_txt_mat('../inputs/mat63.txt')
 N = A.shape[0]
 #y = read_txt_vec('../solution.txt', N)
 b = np.ones((N,))
 
 t = time()
-x, _, = scipy_bicgstab(A, b, tol=1e-6)
+M = np.eye(N)
+#M = np.diag(1 / np.diag(A))
+#M = np.linalg.inv(A)
+x, _, = scipy_bicgstab(A, b, tol=1e-6, M=M)
 t = time() - t
 print('scipy:')
 print(x)
 print(f'Elapsed time:', t)
 
 t = time()
-solve(A, b, toll=1e-6, max_it=N*10)
+solve(M.dot(A), M.dot(b), toll=1e-6, max_it=N*10, plot=True)
 t = time() - t
 print(f'Elapsed time:', t)
 

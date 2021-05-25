@@ -7,31 +7,26 @@ use omp_lib
 
 implicit none
 
-! Interfaces
-include 'axbnsy_int.h'
-include 'readmat_int.h'
-
 ! Input variables
 logical                        :: BINREAD
 type(CSRMAT)                   :: mat_A
-character(len=100)             :: mat_name, temp
+character(len=100)             :: mat_name
 
 ! Local variables
 integer                        :: nn,nt
 integer                        :: i,ierr
 
 ! Local allocatable variables
-real(dp), allocatable :: b(:),vec_y(:),x(:)
+real(dp), allocatable :: b(:), vec_y(:), x(:)
 
 ! Handles
-integer, pointer               :: iat(:),ja(:)
+integer, pointer               :: iat(:), ja(:)
 real(dp), pointer     :: coef(:)
 real(dp) :: timer
 
 ! Open the input file
-open(1,file='inputs/test1.param',status='old')
+open(1, file='inputs/test1.param', status='old')
 read(1,*) BINREAD
-
 read(1,*) mat_name
 close(1)
 

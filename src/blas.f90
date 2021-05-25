@@ -3,6 +3,7 @@
 module class_BLAS
     use class_precision
     use class_CSRMAT
+    use omp_lib
     implicit none
 
 contains
@@ -11,6 +12,7 @@ contains
         real(dp), intent(out) :: x(:)
         integer :: i,n
         n = size(x)
+        !$omp parallel do
         do i = 1,n
             x(i) = 0.0_dp
         end do
@@ -40,15 +42,16 @@ contains
             else
                 beta_local = 1.0_dp
             end if
+            !$omp parallel do
             do i = 1,n
                 z(i) = z(i) + alpha * x(i) + beta_local * y(i)
             end do
         else
+            !$omp parallel do
             do i = 1,n
                 z(i) = z(i) + alpha * x(i)
             end do
         end if
-
         
     end subroutine
 
@@ -65,7 +68,7 @@ contains
         ! handles for the matrix
         real(dp), pointer :: coef(:) => null()
         integer, dimension(:), pointer :: iat => null(), ja => null()
-
+        
         n = A%patt%nrows
 
         ! dimension check
@@ -86,7 +89,8 @@ contains
             else
                 beta_local = 1.0_dp
             end if
-            do i=1,n
+            !$omp parallel do private(j)
+            do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
                 do j = c_start,c_end
@@ -95,7 +99,8 @@ contains
                 z(i) = alpha * z(i) + beta * y(i)
             end do
         else
-            do i=1,n
+            !$omp parallel do private(j)
+            do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
                 do j = c_start,c_end
@@ -121,6 +126,7 @@ contains
 
         ! computation
         z = 0.0_dp
+        !$omp parallel do reduction(+:z)
         do i = 1,n
             z = z + x(i) * y(i)
         end do
