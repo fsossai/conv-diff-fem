@@ -59,38 +59,43 @@ subroutine bicgstab(A, b, x, tol, max_it)
     p = r
     
     do j = 1,max_iterations
-        if (norm(r) <= tolerance) exit
+        if (norm2(r) <= tolerance) exit
+
+        !$omp parallel
         
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
         r_r0 = inner_prod(r, r0)
-        call reset(A_p)
-        call amxpby(A_p, 1.0_dp, A, p)
+        call amxpby_set(A_p, 1.0_dp, A, p)
         alpha = r_r0 / inner_prod(A_p, r0)
-
+        
         ! s_j = r_j - alpha_j A p_j
-        s = r - alpha * A_p
+        call axpby_set(s, 1.0_dp, r, -alpha, A_p)
         
         ! omega_j = (A s_j, s_j) / (A s_j, A s_j)
-        call reset(A_s)
-        call amxpby(A_s, 1.0_dp, A, s)
+        call amxpby_set(A_s, 1.0_dp, A, s)
         omega = inner_prod(A_s, s) / inner_prod(A_s, A_s)
 
         ! x_j+1 = x_j + alpha_j p_j + omega_j s_j
         call axpby(x, alpha, p, omega, s)
-        
+
         ! r_j+1 = s_j - omega_j A s_j
-        call reset(r_new)
-        call axpby(r_new, -omega, A_s, 1.0_dp, s)
+        call axpby_set(r_new, -omega, A_s, 1.0_dp, s)
         
         ! beta_j = (r_j+1, r_0^) / (r_j, r_0^) * (alpha_j / omega_j)
         beta = inner_prod(r_new, r0) / r_r0 * (alpha / omega)
-
+        
         ! p_j+1 = r_j+1 + beta_j (p_j - omega_j A p_j)
-        p = r_new + beta * (p - omega * A_p)
+        call axpby(p, -omega, A_p)
+        call axpby_set(p, 1.0_dp, r_new, beta, p)
 
-        r = r_new
+        !!$omp workshare
+        !r = r_new
+        !!$omp end workshare
+        call axpby_set(r, 1.0_dp, r_new)
+
+        !$omp end parallel
     end do
-    
+
     print *, 'BiCGSTAB iterations:', j-1
 
     deallocate(r, r0, r_new, p, s, A_p, A_s)

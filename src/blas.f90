@@ -12,7 +12,7 @@ contains
         real(dp), intent(out) :: x(:)
         integer :: i,n
         n = size(x)
-        !!$omp parallel do
+        !$omp do
         do i = 1,n
             x(i) = 0.0_dp
         end do
@@ -42,14 +42,51 @@ contains
             else
                 beta_local = 1.0_dp
             end if
-            !$omp parallel do
+            !$omp do
             do i = 1,n
                 z(i) = z(i) + alpha * x(i) + beta_local * y(i)
             end do
         else
-            !$omp parallel do
+            !$omp do
             do i = 1,n
                 z(i) = z(i) + alpha * x(i)
+            end do
+        end if
+        
+    end subroutine
+
+    subroutine axpby_set(z, alpha, x, beta, y)
+        real(dp), intent(inout) :: z(:)
+        real(dp), intent(in) :: alpha
+        real(dp), intent(in) :: x(:)
+        real(dp), optional, intent(in) :: beta
+        real(dp), optional, intent(in) :: y(:)
+        real(dp) :: beta_local
+        integer :: i,n
+
+        n = size(x)
+
+        ! dimension check
+        if (present(y) .and. n .ne. size(y)) then
+            print *, 'ERROR: dimension mismatch (in axpby).'
+            stop
+        end if
+
+        ! computation
+        if (present(y)) then
+            if (present(beta)) then
+                beta_local = beta
+            else
+                beta_local = 1.0_dp
+            end if
+            !$omp do
+            do i = 1,n
+                z(i) = alpha * x(i) + beta_local * y(i)
+            end do
+        else
+            !$omp do
+            do i = 1,n
+                z(i) = alpha * x(i)
             end do
         end if
         
@@ -89,7 +126,7 @@ contains
             else
                 beta_local = 1.0_dp
             end if
-            !$omp parallel do private(j,partial)
+            !$omp do private(j,partial)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
@@ -100,11 +137,69 @@ contains
                 z(i) = alpha * partial + beta * y(i)
             end do
         else
-            !$omp parallel do private(j,partial)
+            !$omp do private(j,partial)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
                 partial = z(i)
+                do j = c_start,c_end
+                    partial = partial + coef(j) * x(ja(j))
+                end do
+                z(i) = alpha * partial
+            end do
+        end if
+    end subroutine
+
+    subroutine amxpby_set(z, alpha, A, x, beta, y)
+        real(dp), intent(inout) :: z(:)
+        real(dp), intent(in) :: alpha
+        type(CSRMAT), intent(in) :: A
+        real(dp), intent(in) :: x(:)
+        real(dp), optional, intent(in) :: beta
+        real(dp), optional, intent(in) :: y(:)
+        real(dp) :: beta_local, partial
+        integer :: i,j,n,c_start,c_end
+
+        ! handles for the matrix
+        real(dp), pointer :: coef(:) => null()
+        integer, dimension(:), pointer :: iat => null(), ja => null()
+        
+        n = A%patt%nrows
+
+        ! dimension check
+        if (n .ne. size(x)) then
+            print *, 'ERROR: dimension mismatch (in amxpby).'
+            stop
+        end if
+      
+        ! setting handles 
+        coef => A%coef
+        iat => A%patt%iat
+        ja => A%patt%ja
+
+        ! computation
+        if (present(y)) then
+            if (present(beta)) then
+                beta_local = beta
+            else
+                beta_local = 1.0_dp
+            end if
+            !$omp do private(j,partial)
+            do i = 1,n
+                c_start = iat(i)
+                c_end = iat(i+1) - 1
+                partial = 0.0_dp
+                do j = c_start,c_end
+                    partial = partial + coef(j) * x(ja(j))
+                end do
+                z(i) = alpha * partial + beta * y(i)
+            end do
+        else
+            !$omp do private(j,partial)
+            do i = 1,n
+                c_start = iat(i)
+                c_end = iat(i+1) - 1
+                partial = 0.0_dp
                 do j = c_start,c_end
                     partial = partial + coef(j) * x(ja(j))
                 end do
@@ -128,7 +223,7 @@ contains
 
         ! computation
         z = 0.0_dp
-        !!$omp parallel do reduction(+:z)
+        !!$omp do reduction(+:z)
         do i = 1,n
             z = z + x(i) * y(i)
         end do
