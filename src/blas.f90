@@ -184,7 +184,7 @@ contains
             else
                 beta_local = 1.0_dp
             end if
-            !$omp do private(j,partial)
+            !$omp do private(j,partial,c_start,c_end)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
@@ -197,7 +197,7 @@ contains
         else
             ! this loop is the bottleneck of the whole BiCGSTAB
             ! unrolled version
-            !!$omp do private(j,partial)
+            !!$omp do private(j,partial,c_start,c_end)
             !do i = 1,n
             !    c_start = iat(i)
             !    c_end = iat(i+1) - 1
@@ -214,7 +214,7 @@ contains
             !    end do
             !    z(i) = alpha * partial
             !end do
-            !$omp do private(j,partial)
+            !$omp do private(j,partial,c_start,c_end)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
