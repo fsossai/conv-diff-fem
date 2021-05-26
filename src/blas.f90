@@ -200,31 +200,16 @@ contains
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
-                j = mod(c_end - c_start + 1, 4)
-                select case (j)
-                case (0)
-                    partial = 0.0_dp
-                case (1)
-                    partial = coef(c_start) * x(ja(c_start))
-                    c_start = c_start + 1
-                case (2)
-                    partial = coef(c_start) * x(ja(c_start)) &
-                            + coef(c_start+1) * x(ja(c_start+1))
-                    c_start = c_start + 2
-                case (3)
-                    partial = coef(c_start) * x(ja(c_start)) &
-                            + coef(c_start+1) * x(ja(c_start+1)) &
-                            + coef(c_start+2) * x(ja(c_start+2))
-                    c_start = c_start + 3
-                end select
-                !partial = 0.0_dp
-                do j = c_start,c_end,4  ! 4-unrolled
+                partial = 0.0_dp
+                do j = c_start, c_start + mod(c_end - c_start + 1, 4) - 1
+                    partial = partial + coef(j) * x(ja(j))
+                end do
+                do j = j,c_end,4  ! 4-unrolled
                     partial = partial &
                             + coef(j) * x(ja(j)) &
                             + coef(j+1) * x(ja(j+1)) &
                             + coef(j+2) * x(ja(j+2)) &
                             + coef(j+3) * x(ja(j+3))
-                    !partial = partial + coef(j) * x(ja(j))
                 end do
                 z(i) = alpha * partial
             end do
