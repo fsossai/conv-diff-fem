@@ -1,6 +1,6 @@
 ! Basic Linear Algebra Subroutines
 
-module class_BLAS
+module BLAS
     use class_precision
     use class_CSRMAT
     use omp_lib
@@ -235,4 +235,4 @@ contains
         z = sqrt(inner_prod(x, x))
     end function
 
-end module class_BLAS
+end module BLAS

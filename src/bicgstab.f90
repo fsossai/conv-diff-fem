@@ -1,14 +1,10 @@
 ! Bi-conjugate Gradient Stabilized
 
-module class_bicgstab
-    implicit none
-contains
-
 subroutine bicgstab(A, b, x, tol, max_it)
     use class_precision
     use class_CSRMAT
-    use class_BLAS
-    use class_utils
+    use BLAS
+    use utils
     use omp_lib
 
     type(CSRMAT), intent(in)            :: A
@@ -46,7 +42,7 @@ subroutine bicgstab(A, b, x, tol, max_it)
 
     ! Start of BiCGSTAB algorithm
     
-    !$omp parallel
+    !$omp parallel private(j)
 
     ! the initial guess is the zero-vector
     !$omp workshare
@@ -95,15 +91,14 @@ subroutine bicgstab(A, b, x, tol, max_it)
         !$omp workshare
         r = r_new
         !$omp end workshare
-
-        !!$omp barrier
     end do
+
+    !$omp single
+    print *, 'BiCGSTAB iterations:', j-1
+    !$omp end single
+
     !$omp end parallel
 
-    print *, 'BiCGSTAB iterations:', j-1
 
     deallocate(r, r0, r_new, p, s, A_p, A_s)
 end subroutine
-
-
-end module

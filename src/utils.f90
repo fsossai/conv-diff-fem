@@ -1,4 +1,4 @@
-module class_utils
+module utils
     use class_precision
     use class_CSRMAT
     
@@ -58,4 +58,4 @@ contains
             print *
         end do
     end subroutine
-end module class_utils
+end module utils
