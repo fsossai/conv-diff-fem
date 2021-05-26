@@ -46,22 +46,26 @@ subroutine bicgstab(A, b, x, tol, max_it)
 
     ! Start of BiCGSTAB algorithm
     
+    !$omp parallel
+
     ! the initial guess is the zero-vector
+    !$omp workshare
     x = 0.0_dp
+    !$omp end workshare
     
     ! r_0 = b - A x_0
     call amxpby(r, -1.0_dp, A, x, 1.0_dp, b)
     
+    !$omp workshare
     ! r_0^ arbitrary
     r0 = r
     
     ! p0 = r0
     p = r
-    
+    !$omp end workshare
+
     do j = 1,max_iterations
         if (norm2(r) <= tolerance) exit
-
-        !$omp parallel
         
         ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
         r_r0 = inner_prod(r, r0)
@@ -88,13 +92,13 @@ subroutine bicgstab(A, b, x, tol, max_it)
         call axpby(p, -omega, A_p)
         call axpby_set(p, 1.0_dp, r_new, beta, p)
 
-        !!$omp workshare
-        !r = r_new
-        !!$omp end workshare
-        call axpby_set(r, 1.0_dp, r_new)
+        !$omp workshare
+        r = r_new
+        !$omp end workshare
 
-        !$omp end parallel
+        !!$omp barrier
     end do
+    !$omp end parallel
 
     print *, 'BiCGSTAB iterations:', j-1
 
