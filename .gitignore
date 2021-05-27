@@ -34,3 +34,5 @@
 # Custom
 *.txt
 !/inputs/*.txt
+# Tab Separated Values
+*.tsv 
