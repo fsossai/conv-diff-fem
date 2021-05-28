@@ -4,7 +4,6 @@ subroutine bicgstab(A, b, x, tol, max_it)
     use class_precision
     use class_CSRMAT
     use BLAS
-    use utils
     use omp_lib
 
     type(CSRMAT), intent(in)            :: A
