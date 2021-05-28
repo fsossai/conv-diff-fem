@@ -24,7 +24,7 @@ real(dp), allocatable :: b(:), vec_y(:), x(:)
 ! Handles
 integer, pointer               :: iat(:), ja(:)
 real(dp), pointer     :: coef(:)
-real(dp) :: timer
+real(dp) :: timer, clock_t_start, clock_t_end
 
 ! Open the input file
 open(1, file='inputs/test1.param', status='old')
@@ -64,13 +64,17 @@ coef => mat_A%coef
 ! Core computations
 print *, 'Matrix size:', nn
 b = 1.0_dp
+call cpu_time(clock_t_start)
 timer = omp_get_wtime()
 call bicgstab(mat_A, b, x, tol=1e-6_dp)
 timer = omp_get_wtime() - timer
+call cpu_time(clock_t_end)
+
 
 !call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)
-print '(a,1f10.6)', 'Elapsed time (s):', timer
+print '(a20,1f10.6)', 'Elapsed time (s):', timer
+print '(a20,1f10.6)', 'Clock time (s):', clock_t_end - clock_t_start
 
 ! Deallocate the matrix
 ierr = dlt_CSRMAT(mat_A)
