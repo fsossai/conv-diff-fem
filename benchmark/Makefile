@@ -1,5 +1,5 @@
 cc=gfortran
-flags=-Wall -O3 -g -fopenmp 
+flags=-Wall -O3 -g -fopenmp
 include_dir=../include
 source_dir=../src
 
@@ -19,7 +19,7 @@ amxpby: csrmat blas
 		$(source_dir)/CSRMAT.f90 \
 		$(source_dir)/irow2iat.f90 \
 		$(source_dir)/*.f \
-		amxpby.f90 \
+		bm_amxpby.f90 \
 		-o amxpby.out
 
 blas: $(source_dir)/blas.f90 csrmat
