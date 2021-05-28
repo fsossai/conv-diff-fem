@@ -34,5 +34,6 @@
 # Custom
 *.txt
 !/inputs/*.txt
+*.png
 # Tab Separated Values
-*.tsv 
+*.tsv
