@@ -53,7 +53,6 @@ subroutine bicgstab(A, b, x, tol, max_it)
     ! p0 = r0
     p = r
 
-    !$omp parallel private(j)
     do j = 1,max_iterations
         if (norm2(r) <= tolerance) exit
         
@@ -84,7 +83,6 @@ subroutine bicgstab(A, b, x, tol, max_it)
 
         r = r_new
     end do
-    !$omp end parallel
     
     print *, 'BiCGSTAB iterations:', j-1
 

@@ -214,7 +214,7 @@ contains
             !    end do
             !    z(i) = alpha * partial
             !end do
-            !$omp do private(j,partial,c_start,c_end)
+            !$omp parallel do private(j,partial,c_start,c_end)
             do i = 1,n
                 c_start = iat(i)
                 c_end = iat(i+1) - 1
