@@ -16,7 +16,7 @@ character(len=100)             :: mat_name
 
 ! Local variables
 integer                        :: nn,nt
-integer                        :: i,ierr
+integer                        :: ierr
 
 ! Local allocatable variables
 real(dp), allocatable :: b(:), vec_y(:), x(:)
@@ -73,8 +73,8 @@ call cpu_time(clock_t_end)
 
 !call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)
-print '(a20,1f10.6)', 'Elapsed time (s):', timer
-print '(a20,1f10.6)', 'Clock time (s):', clock_t_end - clock_t_start
+print '(a20,1en20.3)', 'Elapsed time (s):', timer
+print '(a20,1en20.3)', 'Clock time (s):', clock_t_end - clock_t_start
 
 ! Deallocate the matrix
 ierr = dlt_CSRMAT(mat_A)

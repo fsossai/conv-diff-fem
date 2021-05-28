@@ -1,5 +1,5 @@
 cc=gfortran
-flags=-O3 -g -fopenmp
+flags=-Wall -O3 -g -fopenmp
 include_dir=./include
 source_dir=./src
 
