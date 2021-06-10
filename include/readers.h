@@ -1,4 +1,5 @@
-interface read_mat_int
+interface readers_int
+
     subroutine read_mat(filename, binary, mat, info)
         use class_CSRMAT
         implicit none
@@ -9,4 +10,14 @@ interface read_mat_int
         integer, intent(out)        :: info
 
     end subroutine
-end interface read_mat_int
+
+    subroutine read_topo(filename, T)
+        use class_precision
+        
+        implicit none
+        
+        character(len=100), intent(in)      :: filename
+        integer, allocatable, intent(out)   :: T(:,:)
+    end subroutine
+
+end interface readers_int
