@@ -5,8 +5,6 @@ subroutine read_topo(filename, T)
     ! which must corresponds to the number of remaining rows.
     ! Each row has the following syantax:
     ! ELEMENT_ID NODE1_ID NODE2_ID NODE3_ID
-
-    use class_precision
     
     implicit none
     

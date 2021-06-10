@@ -12,12 +12,18 @@ interface readers_int
     end subroutine
 
     subroutine read_topo(filename, T)
-        use class_precision
-        
         implicit none
         
         character(len=100), intent(in)      :: filename
         integer, allocatable, intent(out)   :: T(:,:)
+    end subroutine
+
+    subroutine read_coord(filename, C)
+        use class_precision
+        implicit none
+        
+        character(len=100), intent(in)      :: filename
+        real(dp), allocatable, intent(out)  :: C(:,:)
     end subroutine
 
 end interface readers_int
