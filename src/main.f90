@@ -1,6 +1,5 @@
 program main
 
-   
 use class_CSRMAT
 use utils
 use omp_lib
@@ -8,52 +7,37 @@ use omp_lib
 implicit none
 
 include 'bicgstab.h'
+include 'readers.h'
 
 ! Input variables
-logical                        :: BINREAD
+logical                        :: binary
 type(CSRMAT)                   :: mat_A
 character(len=100)             :: mat_name
 
 ! Local variables
-integer                        :: nn,nt
+integer                        :: nn
 integer                        :: ierr
 
 ! Local allocatable variables
 real(dp), allocatable :: b(:), vec_y(:), x(:)
 
 ! Handles
-integer, pointer               :: iat(:), ja(:)
-real(dp), pointer     :: coef(:)
-real(dp) :: timer, clock_t_start, clock_t_end
+integer, pointer        :: iat(:), ja(:)
+real(dp), pointer       :: coef(:)
+real(dp)                :: timer, clock_t_start, clock_t_end
 
 ! Open the input file
 open(1, file='inputs/test1.param', status='old')
-read(1,*) BINREAD
+read(1,*) binary
 read(1,*) mat_name
 close(1)
 
-! Open and read the matrix file
-if (BINREAD) then
-   ! Open in binary format and read matrix header
-   open(11,file=mat_name,status='old',form='unformatted',access='stream')
-   read(11) nn,nt
-else
-   ! Open as ascii and read matrix header
-   open(11,file=mat_name,status='old')
-   read(11,*) nn,nt
-endif
-
-! Allocate the matrix
-ierr = new_CSRMAT(nn,nt,mat_A)
-if (ierr /= 0) stop 'Error in allocating mat_A'
-
-! Read the matrix 
-call readmat(11,BINREAD,mat_A,ierr)
-if (ierr /= 0) stop 'Error in reading mat_A'
+call read_mat(mat_name, binary, mat_A, ierr)
+nn = mat_A%patt%nrows
 
 ! Allocate b and vec_y
 allocate(b(nn),vec_y(nn),x(nn),stat=ierr)
-if (ierr /= 0) stop 'Error in allocating b and vec_y'
+if (ierr .ne. 0) stop 'Error in allocating b and vec_y'
 
 ! Set handles to mat_A
 iat  => mat_A%patt%iat
