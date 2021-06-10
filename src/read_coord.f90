@@ -10,7 +10,7 @@ subroutine read_coord(filename, C)
     
     implicit none
     
-    character(len=100), intent(in)      :: filename
+    character(len=*), intent(in)      :: filename
     real(dp), allocatable, intent(out)  :: C(:,:)
     
     integer :: i, iunit, ierr, nnodes, row

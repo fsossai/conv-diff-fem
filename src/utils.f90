@@ -58,4 +58,53 @@ contains
             print *
         end do
     end subroutine
+
+    subroutine get_boundaries(coord, tolerance, bnodes)
+        ! Given a triangulation, finds all the nodes lying on the borders 
+        ! of a square with coordinates [0,0], [0,1], [1,1], [1,0].
+
+        real(dp), intent(in)                :: coord(:,:)
+        real(dp), intent(in)                :: tolerance
+        integer, allocatable, intent(out)   :: bnodes(:)
+        
+        logical, allocatable    :: otb(:) ! stands for 'On The Border'
+        integer                 :: i, j, nn, notb
+
+        nn = size(coord, 1)
+        allocate(otb(nn))
+        otb = .false.
+
+        ! Scanning x and y separately for cache-friendliness
+        
+        ! scanning x 
+        do i = 1, nn
+            if (abs(coord(i,1)) .le. tolerance .or. &
+                abs(coord(i,1) - 1.0_dp) .le. tolerance) then
+                otb(i) = .true.
+            end if
+        end do
+
+        ! scanning y
+        do i = 1, nn
+            if (abs(coord(i,2)) .le. tolerance .or. &
+                abs(coord(i,2) - 1.0_dp) .le. tolerance) then
+                otb(i) = .true.
+            end if
+        end do
+
+        notb = count(otb)
+        allocate(bnodes(notb))
+        
+        j = 1
+        do i = 1, nn
+            if (otb(i)) then
+                bnodes(j) = i
+                j = j + 1
+            end if
+        end do
+
+        print *, 'j',j,'notb',notb
+        if (j .ne. notb) stop 'ERROR: corrupted'
+
+        end subroutine
 end module utils

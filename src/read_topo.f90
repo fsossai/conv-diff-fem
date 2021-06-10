@@ -8,7 +8,7 @@ subroutine read_topo(filename, T)
     
     implicit none
     
-    character(len=100), intent(in)      :: filename
+    character(len=*), intent(in)      :: filename
     integer, allocatable, intent(out)   :: T(:,:)
     
     integer :: i, iunit, ierr, ne, el

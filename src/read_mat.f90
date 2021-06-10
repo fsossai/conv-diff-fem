@@ -21,7 +21,7 @@ use class_CSRMAT
 
 implicit none
 
-character(len=100), intent(in)   :: filename
+character(len=*), intent(in)   :: filename
 logical, intent(in)              :: binary
 type(CSRMAT), intent(inout) :: mat
 integer, intent(out)        :: info
