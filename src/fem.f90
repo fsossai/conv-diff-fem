@@ -96,3 +96,17 @@ subroutine spmat_update(A, indices, Ae)
     end do
     
 end subroutine
+
+
+subroutine create_pattern(nnodes, topo, A)
+    use class_CSRMAT
+    integer, intent(in)             :: nnodes
+    integer, intent(in)             :: topo(:,:)
+    type(CSRMAT), intent(inout)     :: A
+
+    integer :: ierr
+
+
+    !ierr = new_Pattern(nrows, nterms, A%patt)
+    
+end subroutine
