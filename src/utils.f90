@@ -110,8 +110,7 @@ contains
             end if
         end do
 
-        print *, 'j',j,'notb',notb
-        if (j .ne. notb) stop 'ERROR: corrupted'
+        deallocate(otb)
 
         end subroutine
 end module utils

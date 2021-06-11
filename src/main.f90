@@ -8,6 +8,7 @@ implicit none
 
 include 'bicgstab.h'
 include 'readers.h'
+include 'fem.h'
 
 ! Input variables
 logical                        :: binary
@@ -16,7 +17,7 @@ character(len=100)             :: mat_name
 
 ! Local variables
 integer                        :: nn
-integer                        :: i, ierr
+integer                        :: ierr
 
 ! Local allocatable variables
 real(dp), allocatable :: b(:), vec_y(:), x(:)
@@ -63,8 +64,7 @@ call cpu_time(clock_t_end)
 call read_coord('inputs/grid1.coord.txt', coord)
 call read_topo('inputs/grid1.topo.txt', topo)
 call get_boundaries(coord, 1e-5_dp, bnodes)
-print *, 'bnodes:'
-print *, (bnodes(i), i=1,10)
+call solve(coord, topo)
 
 !call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)

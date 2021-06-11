@@ -18,6 +18,7 @@ contains
         end do
     end subroutine
 
+
     subroutine axpby(z, alpha, x, beta, y)
         real(dp), intent(inout) :: z(:)
         real(dp), intent(in) :: alpha
@@ -55,6 +56,7 @@ contains
         
     end subroutine
 
+
     subroutine axpby_set(z, alpha, x, beta, y)
         real(dp), intent(inout) :: z(:)
         real(dp), intent(in) :: alpha
@@ -91,6 +93,7 @@ contains
         end if
         
     end subroutine
+
 
     subroutine amxpby(z, alpha, A, x, beta, y)
         real(dp), intent(inout) :: z(:)
@@ -149,6 +152,7 @@ contains
             end do
         end if
     end subroutine
+
 
     subroutine amxpby_set(z, alpha, A, x, beta, y)
         real(dp), intent(inout) :: z(:)
@@ -227,6 +231,7 @@ contains
         end if
     end subroutine
 
+
     function inner_prod(x, y) result(z)
         real(dp) :: z
         real(dp), dimension(:), intent(in) :: x, y
@@ -248,10 +253,56 @@ contains
         end do
     end function
 
+    
     function norm(x) result(z)
         real(dp), intent(in) :: x(:)
         real(dp) :: z
         z = sqrt(inner_prod(x, x))
     end function
+
+
+    function det3x3(A) result(det)
+        real(dp), intent(in)    :: A(3,3)
+        real(dp)                :: det
+        det = A(1,1) * A(2,2) * A(3,3) &
+            - A(1,1) * A(2,3) * A(3,2) &
+            - A(1,2) * A(2,1) * A(3,3) &
+            + A(1,2) * A(2,3) * A(3,1) &
+            + A(1,3) * A(2,1) * A(3,2) &
+            - A(1,3) * A(2,2) * A(3,1)
+    end function
+
+
+    subroutine inv3x3(A, A_inv)
+        real(dp), intent(in)    :: A(3,3)
+        real(dp), intent(out)   :: A_inv(3,3)
+        
+        real(dp), parameter     :: eps = 1.0e-10_dp
+        real(dp)                :: cofactor(3,3), det
+        
+        det = A(1,1) * A(2,2) * A(3,3) &
+            - A(1,1) * A(2,3) * A(3,2) &
+            - A(1,2) * A(2,1) * A(3,3) &
+            + A(1,2) * A(2,3) * A(3,1) &
+            + A(1,3) * A(2,1) * A(3,2) &
+            - A(1,3) * A(2,2) * A(3,1)
+        
+        if (abs(det) .le. eps) then
+            A_inv = 0.0_dp
+            return
+        end if
+        
+        cofactor(1,1) = + ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+        cofactor(1,2) = - ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+        cofactor(1,3) = + ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+        cofactor(2,1) = - ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+        cofactor(2,2) = + ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+        cofactor(2,3) = - ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+        cofactor(3,1) = + ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+        cofactor(3,2) = - ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+        cofactor(3,3) = + ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
+        
+        A_inv = transpose(cofactor) / det        
+    end subroutine inv3x3
 
 end module BLAS
