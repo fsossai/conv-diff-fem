@@ -49,3 +49,50 @@ subroutine solve(coord, topo)
     deallocate(q)
 
 end subroutine
+
+subroutine spmat_update(A, indices, Ae)
+    use class_CSRMAT
+
+    type(CSRMAT), intent(inout) :: A
+    integer, intent(in)         :: indices(:)
+    real(dp), intent(in)        :: Ae(:,:)
+
+    integer :: i, j, k, n, offset, ii, jj
+    real(dp), pointer :: coef(:) => null()
+    integer, dimension(:), pointer :: iat => null(), ja => null()
+
+    n = size(indices)
+
+    ! Sanity check
+    if (size(Ae, 1) .ne. n .or. size(Ae, 2) .ne. n) then
+        stop 'ERROR: sanity check failed in spmat_update'
+    end if
+
+    ! handles to the sparse matrix
+    coef => A%coef
+    iat => A%patt%iat
+    ja => A%patt%ja
+    
+    do i = 1, n
+        do j = 1, n
+            ! Finding the position of (indices(i), indices(j)) in
+            ! the sparse matrix coefficient array
+
+            ii = indices(i)
+            jj = indices(j)
+            offset = iat(ii)
+
+            ! We assume that the sparse matrix has a suitable
+            ! pattern. If this condition is not met, the following
+            ! loop is likely to cycle forever.
+            k = 0
+            do while (ja(offset + k) .ne. jj)
+                k = k + 1
+            end do
+
+            ! Finally, offset + k is the position of (ii, jj)
+            coef(offset + k) = coef(offset + k) + Ae(i, j)
+        end do        
+    end do
+    
+end subroutine
