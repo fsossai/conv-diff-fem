@@ -563,4 +563,50 @@ contains
 
    end subroutine errchk_CSRMAT
 
+   subroutine print_CSRMAT(mat, frmt)
+      type(CSRMAT), intent(in)      :: mat
+      character(len=*), intent(in), optional    :: frmt
+      
+      character(len=20)    :: frmt_ok
+      integer :: n, i, j, k, l
+      real(dp), pointer :: coef(:) => null()
+      integer, dimension(:), pointer :: iat => null(), ja => null()
+      logical :: legal
+      
+      ! How to print each entry
+      if (present(frmt)) then
+         frmt_ok = frmt
+      else
+         frmt_ok = '(1f15.8)'
+      end if
+      
+      n = mat%patt%nrows
+      coef => mat%coef
+      iat => mat%patt%iat
+      ja => mat%patt%ja
+      
+      do i = 1, n
+         l = iat(i+1) - iat(i)
+         if (l .gt. 0) then
+            legal = .true.
+            k = 0
+            do j = 1, n
+               if (legal .and. ja(iat(i) + k) .eq. j) then
+                  write(*, fmt=frmt_ok, advance='no') coef(iat(i) + k)
+                  k = k + 1
+                  if (k .eq. l) legal = .false.
+               else
+                  write(*, fmt=frmt_ok, advance='no') 0.0_dp
+               end if
+            end do
+            print *
+         else
+            do j = 1, n
+               write(*, fmt=frmt_ok, advance='no') 0.0_dp
+            end do
+            print *
+         end if
+      end do
+   end subroutine
+
 end module class_CSRMAT
