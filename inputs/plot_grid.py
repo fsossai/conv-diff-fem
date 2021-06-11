@@ -1,7 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
-filename = 'grid1.coord.txt'
+if len(sys.argv) < 2:
+    print('Please specify an input file name.')
+    sys.exit(-1)
+
+filename = sys.argv[1]
 
 x = []
 y = []
@@ -32,7 +37,12 @@ bound = list(set(
     vertical_bound_A + vertical_bound_B +
     horizontal_bound_A + horizontal_bound_B
 ))
-print('Boundary nodes:', len(bound))
+bound = np.array(bound)
+bound.sort()
+
+print('Number of boundary nodes:', len(bound))
+print('Boundary nodes:')
+print(bound)
 
 plt.scatter(x, y, s=1)
 plt.scatter(x[bound], y[bound], s=2)

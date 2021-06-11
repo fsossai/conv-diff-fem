@@ -61,7 +61,9 @@ contains
 
     subroutine get_boundaries(coord, tolerance, bnodes)
         ! Given a triangulation, finds all the nodes lying on the borders 
-        ! of a square with coordinates [0,0], [0,1], [1,1], [1,0].
+        ! of a square defined by the following two corners
+        ! [min(x), min(y)] [max(x), max(y)]
+        ! called point_a and point_b respectively
 
         real(dp), intent(in)                :: coord(:,:)
         real(dp), intent(in)                :: tolerance
@@ -69,25 +71,30 @@ contains
         
         logical, allocatable    :: otb(:) ! stands for 'On The Border'
         integer                 :: i, j, nn, notb
+        real(dp), dimension(2)  :: point_a, point_b
 
         nn = size(coord, 1)
         allocate(otb(nn))
         otb = .false.
 
+        ! Finding point_a and point_b (x,y) coordinates
+        point_a = minval(coord, 1)
+        point_b = maxval(coord, 1)
+
         ! Scanning x and y separately for cache-friendliness
         
         ! scanning x 
         do i = 1, nn
-            if (abs(coord(i,1)) .le. tolerance .or. &
-                abs(coord(i,1) - 1.0_dp) .le. tolerance) then
+            if (abs(coord(i,1) - point_a(1)) .le. tolerance .or. &
+                abs(coord(i,1) - point_b(1)) .le. tolerance) then
                 otb(i) = .true.
             end if
         end do
 
         ! scanning y
         do i = 1, nn
-            if (abs(coord(i,2)) .le. tolerance .or. &
-                abs(coord(i,2) - 1.0_dp) .le. tolerance) then
+            if (abs(coord(i,2) - point_a(2)) .le. tolerance .or. &
+                abs(coord(i,2) - point_b(2)) .le. tolerance) then
                 otb(i) = .true.
             end if
         end do
@@ -95,11 +102,11 @@ contains
         notb = count(otb)
         allocate(bnodes(notb))
         
-        j = 1
+        j = 0
         do i = 1, nn
             if (otb(i)) then
-                bnodes(j) = i
                 j = j + 1
+                bnodes(j) = i
             end if
         end do
 
