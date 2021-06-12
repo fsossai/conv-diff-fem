@@ -15,6 +15,7 @@ contains
         close(unit=1)
     end subroutine
 
+
     subroutine write_csrmat(name, A)
         character(len=*), intent(in) :: name
         type(CSRMAT), intent(in) :: A
@@ -42,6 +43,7 @@ contains
         close(unit=1)
     end subroutine
 
+
     subroutine print_vec_compact(x, cols)
         real(dp), intent(in) :: x(:)
         integer, optional, intent(in) :: cols
@@ -58,6 +60,7 @@ contains
             print *
         end do
     end subroutine
+
 
     subroutine get_boundaries(coord, tolerance, bnodes)
         ! Given a triangulation, finds all the nodes lying on the borders 
@@ -113,4 +116,26 @@ contains
         deallocate(otb)
 
         end subroutine
+
+
+        subroutine sort2(x)
+            integer, intent(inout) :: x(2)
+            integer :: temp
+
+            if (x(1) .gt. x(2)) then
+                temp = x(1)
+                x(1) = x(2)
+                x(2) = temp
+            end if
+        end subroutine
+
+        
+        subroutine sort3(x)
+            integer, intent(inout) :: x(:)
+
+            call sort2(x(1:2))
+            call sort2(x(2:3))
+            call sort2(x(1:2))
+        end subroutine
+
 end module utils
