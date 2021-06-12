@@ -3,6 +3,9 @@ subroutine solve(coord, topo)
     use blas, only: det3x3, inv3x3
     implicit none
 
+    include 'spmat_update.h'
+    include 'create_pattern.h'
+
     real(dp), intent(in)        :: coord(:,:)
     integer, intent(in)         :: topo(:,:)
 
@@ -28,6 +31,10 @@ subroutine solve(coord, topo)
     allocate(q(nn))             ! RHS vector
     q = 0.0_dp
 
+    call create_pattern(nn, topo, H)
+    call create_pattern(nn, topo, B)
+    call create_pattern(nn, topo, P)
+    
     do i = 1, ne
         nodes = topo(i, :)
         T = 1.0_dp
@@ -38,11 +45,16 @@ subroutine solve(coord, topo)
         He = area * matmul(transpose(grad), matmul(diff, grad))
         qe = area / 3.0_dp
         Be = matmul(ones3x1, matmul(vel, grad) / 6.0_dp)
+        Pe = 0.0_dp !!!
+        
+        ! update the global matrices
 
-        ! update global matrices
         ! H(nodes, nodes) = H(nodes, nodes) + He
+        call spmat_update(H, nodes, He)
         ! B(nodes, nodes) = B(nodes, nodes) + Be
+        call spmat_update(H, nodes, He)
         ! q(nodes) = q(nodes) + qe
+        q(nodes) = q(nodes) + qe
     end do
 
     
