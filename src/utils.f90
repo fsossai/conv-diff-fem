@@ -131,7 +131,7 @@ contains
 
         
         subroutine sort3(x)
-            integer, intent(inout) :: x(:)
+            integer, intent(inout) :: x(3)
 
             call sort2(x(1:2))
             call sort2(x(2:3))
