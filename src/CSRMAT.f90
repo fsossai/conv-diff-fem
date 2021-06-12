@@ -584,7 +584,7 @@ contains
       coef => mat%coef
       iat => mat%patt%iat
       ja => mat%patt%ja
-      
+
       do i = 1, n
          l = iat(i+1) - iat(i)
          if (l .gt. 0) then

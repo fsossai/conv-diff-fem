@@ -138,4 +138,81 @@ contains
             call sort2(x(1:2))
         end subroutine
 
+
+        function index_of_first(x, val) result(index)
+            integer, intent(in) :: x(:), val
+            integer :: i, n, index
+            n = size(x, 1)
+
+            do i = 1, n
+                if (x(i) .eq. val) then
+                    index = i
+                    return
+                end if
+            end do
+
+            index = -1
+        end function
+
+        
+        subroutine print_int_array_2d(x, frmt)
+            integer, intent(in)             :: x(:,:)
+            character(len=*), intent(in)    :: frmt
+            integer                         :: i, j
+
+            do i = 1, size(x, 1)
+                do j = 1, size(x, 2)
+                    write(*, fmt=frmt, advance='no') x(i, j)
+                end do
+                print *
+            end do
+        end subroutine
+
+
+        subroutine set_insert(x, val)
+            ! Replaces the first occurence of -1 in x only if val
+            ! is not in x
+
+            integer, intent(inout)  :: x(:)
+            integer, intent(in)     :: val
+
+            integer                 :: i, n
+
+            n = size(x, 1)
+
+            do i = 1, n
+                if (x(i) .eq. val) return
+                if (x(i) .eq. -1) then
+                    x(i) = val
+                    return
+                end if
+            end do
+        end subroutine  
+
+
+        recursive subroutine quicksort(a, first, last)
+            implicit none
+            integer, intent(inout) :: a(:)
+            integer :: first, last
+            integer :: i, j, x, t
+
+            x = a( (first + last) / 2 )
+            i = first
+            j = last
+            do
+                do while (a(i) < x)
+                    i = i + 1
+                end do
+                do while (x < a(j))
+                    j = j - 1
+                end do
+                if (i >= j) exit
+                t = a(i);  a(i) = a(j);  a(j) = t
+                i = i + 1
+                j = j - 1
+            end do
+            if (first < i - 1) call quicksort(a, first, i - 1)
+            if (j + 1 < last)  call quicksort(a, j + 1, last)
+        end subroutine quicksort
+
 end module utils

@@ -100,13 +100,70 @@ end subroutine
 
 subroutine create_pattern(nnodes, topo, A)
     use class_CSRMAT
+    use utils
+
     integer, intent(in)             :: nnodes
     integer, intent(in)             :: topo(:,:)
     type(CSRMAT), intent(inout)     :: A
 
-    integer :: ierr
-
-
-    !ierr = new_Pattern(nrows, nterms, A%patt)
+    integer                         :: i, nelem, elem(3), ncols, nz
+    integer, parameter              :: max_degree = 8
+    integer, allocatable            :: conn(:,:)
+    integer, pointer, dimension(:)  :: iat, ja
+        
+    nelem = size(topo, 1)
+    allocate(conn(max_degree, nnodes))
+    conn = -1
     
+    do i = 1, nelem
+        elem = topo(i, :)
+
+        ! storing that elem(1) is connected with elem(2) and elem(3)
+        call set_insert(conn(:, elem(1)), elem(2))
+        call set_insert(conn(:, elem(1)), elem(3))
+
+        ! storing that elem(2) is connected with elem(1) and elem(3)
+        call set_insert(conn(:, elem(2)), elem(1))
+        call set_insert(conn(:, elem(2)), elem(3))
+
+        ! storing that elem(3) is connected with elem(1) and elem(2)
+        call set_insert(conn(:, elem(3)), elem(1))
+        call set_insert(conn(:, elem(3)), elem(2))
+    end do
+
+    ! At this point, the i-th column of 'conn' is the column pointer
+    ! of the i-th row in the sparse matrix.
+    ! Now the actual pattern is ready to be built.
+  
+    iat => A%patt%iat
+    ja => A%patt%ja
+    
+    ! Calculating the number of nonzeros
+    nz = max_degree * nnodes - count(conn .eq. -1) + nnodes
+
+    if (associated(iat)) deallocate(iat)
+    allocate(iat(nnodes + 1))
+
+    if (associated(ja)) deallocate(ja)
+    allocate(ja(nz))
+
+    A%patt%nrows = nnodes
+    A%patt%nterm = nz
+
+    iat(1) = 1
+    do i = 1, nnodes
+        ncols = index_of_first(conn(:, i), -1)
+        iat(i + 1) = iat(i) + ncols
+        ja(iat(i) : iat(i) + ncols - 2) = conn(1 : ncols - 1, i)
+        ja(iat(i + 1) - 1) = i
+        call quicksort(ja, iat(i), iat(i+1)-1)
+    end do
+
+    if (associated(A%coef)) deallocate(A%coef)
+    allocate(A%coef(nz))
+
+    A%coef = 1.0_dp
+    A%patt%iat => iat
+    A%patt%ja => ja
+
 end subroutine
