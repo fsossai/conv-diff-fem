@@ -61,13 +61,13 @@ timer = omp_get_wtime() - timer
 call cpu_time(clock_t_end)
 
 
-call read_coord('inputs/grid1.coord.txt', coord)
-call read_topo('inputs/grid1.topo.txt', topo)
+call read_coord('inputs/minigrid1.coord.txt', coord)
+call read_topo('inputs/minigrid1.topo.txt', topo)
 call get_boundaries(coord, 1e-5_dp, bnodes)
 call solve(coord, topo)
 
 !call print_vec_compact(x, 5)
-call write_vec('solution.txt', x)
+!call write_vec('solution.txt', x)
 print '(a20,1en20.3)', 'Elapsed time (s):', timer
 print '(a20,1en20.3)', 'Clock time (s):', clock_t_end - clock_t_start
 

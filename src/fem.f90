@@ -1,6 +1,7 @@
 subroutine solve(coord, topo)
     use class_CSRMAT
     use blas, only: det3x3, inv3x3
+    use utils !!!
     implicit none
 
     include 'spmat_update.h'
@@ -46,19 +47,24 @@ subroutine solve(coord, topo)
         qe = area / 3.0_dp
         Be = matmul(ones3x1, matmul(vel, grad) / 6.0_dp)
         Pe = 0.0_dp !!!
-        
+
         ! update the global matrices
 
         ! H(nodes, nodes) = H(nodes, nodes) + He
         call spmat_update(H, nodes, He)
         ! B(nodes, nodes) = B(nodes, nodes) + Be
-        call spmat_update(H, nodes, He)
+        call spmat_update(B, nodes, Be)
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
     end do
 
-    
     deallocate(q)
+
+    print *, 'H'
+    call print_CSRMAT(H)
+    print *
+    print *, 'B'
+    call print_CSRMAT(B)
 
 end subroutine
 
@@ -174,7 +180,7 @@ subroutine create_pattern(nnodes, topo, A)
     if (associated(A%coef)) deallocate(A%coef)
     allocate(A%coef(nz))
 
-    A%coef = 1.0_dp
+    A%coef = 0.0_dp
     A%patt%iat => iat
     A%patt%ja => ja
 

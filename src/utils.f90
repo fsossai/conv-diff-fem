@@ -169,6 +169,20 @@ contains
         end subroutine
 
 
+        subroutine print_real_array_2d(x, frmt)
+            real(dp), intent(in)            :: x(:,:)
+            character(len=*), intent(in)    :: frmt
+            integer                         :: i, j
+
+            do i = 1, size(x, 1)
+                do j = 1, size(x, 2)
+                    write(*, fmt=frmt, advance='no') x(i, j)
+                end do
+                print *
+            end do
+        end subroutine
+
+
         subroutine set_insert(x, val)
             ! Replaces the first occurence of -1 in x only if val
             ! is not in x
