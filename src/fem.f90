@@ -1,17 +1,18 @@
-subroutine solve(coord, topo)
+module fem
+    use class_precision
     use class_CSRMAT
-    use blas, only: det3x3, inv3x3
-    use utils !!!
+    use blas
+    use utils
     implicit none
 
-    include 'spmat_update.h'
-    include 'create_pattern.h'
+contains
 
+subroutine assemble(coord, topo, H, B, P, q)
     real(dp), intent(in)        :: coord(:,:)
     integer, intent(in)         :: topo(:,:)
+    type(CSRMAT), intent(out)   :: H, B, P
+    real(dp), intent(out)       :: q(:)
 
-    type(CSRMAT)                :: H, B, P
-    real(dp), allocatable       :: q(:)
     integer                     :: i, ne, nn
     integer                     :: nodes(3)
     real(dp), dimension(3,3)    :: T, C, He, Be, Pe
@@ -29,7 +30,6 @@ subroutine solve(coord, topo)
 
     if (size(topo, 2) .ne. 3) stop 'ERROR: elements are not triangles.'
 
-    allocate(q(nn))             ! RHS vector
     q = 0.0_dp
 
     call create_pattern(nn, topo, H)
@@ -38,39 +38,52 @@ subroutine solve(coord, topo)
     
     do i = 1, ne
         nodes = topo(i, :)
+        
         T = 1.0_dp
         T(:, 2:3) = coord(nodes, :)
         area = abs(det3x3(T)) / 2.0_dp
         call inv3x3(T, C)
         grad = C(2:3, :)
+        
         He = area * matmul(transpose(grad), matmul(diff, grad))
-        qe = area / 3.0_dp
+        
         Be = matmul(ones3x1, matmul(vel, grad) / 6.0_dp)
-        Pe = 0.0_dp !!!
+        
+        Pe = area / 12.0_dp
+        Pe(1, 1) = area / 6.0_dp
+        Pe(2, 2) = area / 6.0_dp
+        Pe(3, 3) = area / 6.0_dp
+
+        qe = area / 3.0_dp
 
         ! update the global matrices
 
         ! H(nodes, nodes) = H(nodes, nodes) + He
         call spmat_update(H, nodes, He)
+        
         ! B(nodes, nodes) = B(nodes, nodes) + Be
         call spmat_update(B, nodes, Be)
+        
+        ! P(nodes, nodes) = P(nodes, nodes) + Pe
+        call spmat_update(P, nodes, Pe)
+
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
-    end do
 
-    deallocate(q)
+    end do
 
     print *, 'H'
     call print_CSRMAT(H)
     print *
     print *, 'B'
     call print_CSRMAT(B)
+    print *
+    print *, 'P'
+    call print_CSRMAT(P)
 
 end subroutine
 
 subroutine spmat_update(A, indices, Ae)
-    use class_CSRMAT
-
     type(CSRMAT), intent(inout) :: A
     integer, intent(in)         :: indices(:)
     real(dp), intent(in)        :: Ae(:,:)
@@ -117,9 +130,6 @@ end subroutine
 
 
 subroutine create_pattern(nnodes, topo, A)
-    use class_CSRMAT
-    use utils
-
     integer, intent(in)             :: nnodes
     integer, intent(in)             :: topo(:,:)
     type(CSRMAT), intent(inout)     :: A
@@ -185,3 +195,5 @@ subroutine create_pattern(nnodes, topo, A)
     A%patt%ja => ja
 
 end subroutine
+
+end module fem

@@ -1,6 +1,7 @@
 program main
 
 use class_CSRMAT
+use fem
 use utils
 use omp_lib
    
@@ -8,7 +9,6 @@ implicit none
 
 include 'bicgstab.h'
 include 'readers.h'
-include 'fem.h'
 
 ! Input variables
 logical                        :: binary
@@ -31,6 +31,9 @@ real(dp)                :: timer, clock_t_start, clock_t_end
 integer, allocatable        :: topo(:,:)
 integer, allocatable        :: bnodes(:)
 real(dp), allocatable       :: coord(:,:)
+! Assembled matrices and RHS array
+type(CSRMAT)            :: mat_H, mat_B, mat_P
+real(dp), allocatable   :: q(:)
 
 ! Open the input file
 open(1, file='inputs/test1.param', status='old')
@@ -64,7 +67,9 @@ call cpu_time(clock_t_end)
 call read_coord('inputs/minigrid1.coord.txt', coord)
 call read_topo('inputs/minigrid1.topo.txt', topo)
 call get_boundaries(coord, 1e-5_dp, bnodes)
-call solve(coord, topo)
+allocate(q(size(coord,1)))
+call assemble(coord, topo, mat_H, mat_B, mat_P, q)
+deallocate(q)
 
 !call print_vec_compact(x, 5)
 !call write_vec('solution.txt', x)
