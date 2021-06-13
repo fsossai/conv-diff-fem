@@ -10,7 +10,7 @@ contains
 subroutine assemble(coord, topo, H, B, P, q)
     real(dp), intent(in)        :: coord(:,:)
     integer, intent(in)         :: topo(:,:)
-    type(CSRMAT), intent(out)   :: H, B, P
+    type(CSRMAT), intent(inout) :: H, B, P
     real(dp), intent(out)       :: q(:)
 
     integer                     :: i, ne, nn
@@ -31,10 +31,6 @@ subroutine assemble(coord, topo, H, B, P, q)
     if (size(topo, 2) .ne. 3) stop 'ERROR: elements are not triangles.'
 
     q = 0.0_dp
-
-    call create_pattern(nn, topo, H)
-    call create_pattern(nn, topo, B)
-    call create_pattern(nn, topo, P)
     
     do i = 1, ne
         nodes = topo(i, :)
@@ -72,25 +68,17 @@ subroutine assemble(coord, topo, H, B, P, q)
 
     end do
 
-    print *, 'H'
-    call print_CSRMAT(H)
-    print *
-    print *, 'B'
-    call print_CSRMAT(B)
-    print *
-    print *, 'P'
-    call print_CSRMAT(P)
-
 end subroutine
+
 
 subroutine spmat_update(A, indices, Ae)
     type(CSRMAT), intent(inout) :: A
     integer, intent(in)         :: indices(:)
     real(dp), intent(in)        :: Ae(:,:)
 
-    integer :: i, j, k, n, offset, ii, jj
-    real(dp), pointer :: coef(:) => null()
-    integer, dimension(:), pointer :: iat => null(), ja => null()
+    integer                     :: i, j, k, n, offset, ii, jj
+    real(dp), pointer           :: coef(:) => null()
+    integer, pointer            :: iat(:) => null(), ja(:) => null()
 
     n = size(indices)
 
@@ -193,6 +181,60 @@ subroutine create_pattern(nnodes, topo, A)
     A%coef = 0.0_dp
     A%patt%iat => iat
     A%patt%ja => ja
+
+end subroutine
+
+
+subroutine solve(coord, topo, x0, x)
+    real(dp), intent(in)    :: coord(:,:)
+    integer, intent(in)     :: topo(:,:)
+    real(dp), intent(in)    :: x0(:)
+    real(dp), intent(out)   :: x(:)
+
+    type(CSRMAT)            :: H, B, P, M
+    real(dp), allocatable   :: q(:), rhs(:)
+    integer, allocatable    :: bnodes(:)
+    integer                 :: nnodes, nelem, i, ierr
+    integer, parameter      :: max_it = 100
+    integer, parameter      :: bicgstab_max_it = 100
+    real(dp)                :: dt = 0.01
+
+    include 'bicgstab.h'
+    
+    nnodes = size(coord, 1)
+    nelem = size(topo, 1)
+
+    allocate(q(nnodes), rhs(nnodes))
+    
+    call get_boundaries(coord, 1e-5_dp, bnodes)
+    call create_pattern(nnodes, topo, H)
+    call copy_CSRMAT(B, H)
+    call copy_CSRMAT(P, H)
+    call copy_CSRMAT(M, H)
+    call assemble(coord, topo, H, B, P, q)
+
+    ! Setting up the the matrix and the RHS of the linear system
+    M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
+    x = x0
+
+    do i = 1, max_it
+        print *, 'it', i
+        ! imposing the Dirichlet boundary conditions
+        x(bnodes) = 10.0_dp
+        ! solving the linear system
+        call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
+        call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)
+        !call print_vec_compact(x, 5)
+    end do
+
+    ierr = 0
+    ierr = ierr + dlt_CSRMAT(H)
+    ierr = ierr + dlt_CSRMAT(B)
+    ierr = ierr + dlt_CSRMAT(P)
+    ierr = ierr + dlt_CSRMAT(M)
+    if (ierr .ne. 0) stop 'ERROR: failed to delete one or more CSRMAT in "solve".'
+    
+    deallocate(q, rhs)
 
 end subroutine
 

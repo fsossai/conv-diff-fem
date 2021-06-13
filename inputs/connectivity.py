@@ -26,7 +26,7 @@ print('Average node degree:', avg)
 
 plt.bar(*np.unique(deg, return_counts=True))
 plt.xticks()
-plt.title('Degree distribution of the topology matrix')
+plt.title(f'Degree distribution of the topology matrix\n{filename}')
 plt.xlabel('Number of connections (degree)')
 plt.ylabel('Count')
 plt.show()

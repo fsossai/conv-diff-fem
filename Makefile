@@ -7,7 +7,7 @@ all: csrmat fem utils blas
 	$(cc) $(flags) -I$(include_dir) $(source_dir)/*.f90 $(source_dir)/*.f
 
 fem: $(source_dir)/fem.f90 csrmat
-	$(cc) $(flags) -c $<
+	$(cc) $(flags) -I$(include_dir) -c $<
 
 blas: $(source_dir)/blas.f90 csrmat
 	$(cc) $(flags) -c $<

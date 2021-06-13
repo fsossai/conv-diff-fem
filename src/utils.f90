@@ -55,7 +55,7 @@ subroutine print_vec_compact(x, cols)
 
     do i = 1,n,c
         do j = 0,c-1
-            if (i+j <= n) write(*, '(e15.8,1x)', advance='no') x(i+j)
+            if (i+j <= n) write(*, '(f15.8,1x)', advance='no') x(i+j)
         end do
         print *
     end do
