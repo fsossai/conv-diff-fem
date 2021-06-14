@@ -36,7 +36,7 @@ timer = omp_get_wtime() - timer
 call cpu_time(clock_t_end)
 
 !call print_vec_compact(x, 5)
-!call write_vec('solution.txt', x)
+call write_vec('solution.txt', x)
 
 print *
 print '(a20,1en20.3)', 'Elapsed time (s):', timer

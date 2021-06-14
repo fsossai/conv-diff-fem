@@ -11,7 +11,7 @@ subroutine write_vec(name, x)
     
     n = size(x)
     open(unit=1, file=name)
-    write(unit=1, fmt='(i10,1x,1e15.8)') (i, x(i), i=1,n)
+    write(unit=1, fmt='(i10,1x,f15.8)') (i, x(i), i=1,n)
     close(unit=1)
 end subroutine
 

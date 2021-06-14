@@ -103,7 +103,7 @@ subroutine spmat_update(A, indices, Ae)
 
             ! We assume that the sparse matrix has a suitable
             ! pattern. If this condition is not met, the following
-            ! loop is likely to cycle forever.
+            ! loop will cause a segmentation fault.
             k = 0
             do while (ja(offset + k) .ne. jj)
                 k = k + 1
@@ -169,6 +169,7 @@ subroutine create_pattern(nnodes, topo, A)
     iat(1) = 1
     do i = 1, nnodes
         ncols = index_of_first(conn(:, i), -1)
+        if (ncols.eq.-1) ncols = size(conn, 1) + 1
         iat(i + 1) = iat(i) + ncols
         ja(iat(i) : iat(i) + ncols - 2) = conn(1 : ncols - 1, i)
         ja(iat(i + 1) - 1) = i
@@ -191,12 +192,12 @@ subroutine solve(coord, topo, x0, x)
     real(dp), intent(in)    :: x0(:)
     real(dp), intent(out)   :: x(:)
 
+    integer, parameter      :: max_it = 1
+    integer, parameter      :: bicgstab_max_it = 10000
     type(CSRMAT)            :: H, B, P, M
     real(dp), allocatable   :: q(:), rhs(:)
     integer, allocatable    :: bnodes(:)
     integer                 :: nnodes, nelem, i, ierr
-    integer, parameter      :: max_it = 100
-    integer, parameter      :: bicgstab_max_it = 100
     real(dp)                :: dt = 0.01
 
     include 'bicgstab.h'
@@ -215,14 +216,16 @@ subroutine solve(coord, topo, x0, x)
 
     ! Setting up the the matrix and the RHS of the linear system
     M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
+    !call jacobi_precond_mat(M)
     x = x0
 
     do i = 1, max_it
-        print *, 'it', i
+        print *, 'Iteration:', i
         ! imposing the Dirichlet boundary conditions
-        x(bnodes) = 10.0_dp
+        x(bnodes) = 5.0_dp
         ! solving the linear system
         call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
+        !call jacobi_precond_rhs(M, rhs)
         call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)
         !call print_vec_compact(x, 5)
     end do
@@ -237,5 +240,53 @@ subroutine solve(coord, topo, x0, x)
     deallocate(q, rhs)
 
 end subroutine
+
+
+function has_diagonal(A, r) result(flag)
+    ! Checks whether the diagonal of the sparse matrix A 
+    ! belongs to the matrix.
+    ! Every integer 'i' in the output array 'r' represents
+    ! a row index such that A(i,i) is NOT part of the pattern.
+    
+    type(CSRMAT), intent(in)    :: A
+    integer, intent(out), optional, allocatable  :: r(:)
+    logical                     :: flag
+    integer                     :: i, j, k, n
+    integer, allocatable        :: temp(:)
+
+    n = A%patt%nrows
+    allocate(temp(n))
+    temp = -1
+    k = 0
+    flag = .false.
+
+    do i = 1, n
+        flag = .false.
+        do j = A%patt%iat(i), A%patt%iat(i+1) - 1
+            if (A%patt%ja(j) .eq. i) then
+                flag = .true.
+                exit
+            end if
+        end do
+        if (.not.flag) then
+            k = k + 1
+            temp(k) = i
+        end if
+    end do
+
+    if (present(r)) then
+        allocate(r(k))
+        r = temp(1:k)
+    end if
+    
+    if (temp(1) .eq. -1) then
+        flag = .true.
+    else
+        flag = .false.
+    end if
+    deallocate(temp)
+
+end function
+
 
 end module fem
