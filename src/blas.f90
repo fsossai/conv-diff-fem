@@ -305,4 +305,78 @@ subroutine inv3x3(A, A_inv)
     A_inv = transpose(cofactor) / det        
 end subroutine inv3x3
 
+subroutine jacobi_precond_mat(A)
+    ! Divide rows by the diagonal element
+
+    type(CSRMAT), intent(inout)         :: A
+
+    real(dp), pointer               :: coef(:)
+    integer, pointer, dimension(:)  :: iat, ja
+    integer                         :: i, j, n
+    real(dp)                        :: pivot
+
+    ! setting handles
+    coef => A%coef
+    iat => A%patt%iat
+    ja => A%patt%ja
+
+    pivot = 1.0_dp
+    n = A%patt%nrows
+
+    do i = 1, n
+        ! finding pivot, a.k.a. the diagonal element
+        do j = iat(i), iat(i+1) - 1
+            if (ja(j).eq.i) then
+                if (coef(j).eq.0.0_dp) then
+                    stop 'ERROR: diagonal element is zero (jacobi_precond)'
+                end if
+                pivot = 1.0_dp / coef(j)
+                exit
+            end if
+        end do
+
+        ! changing the i-th row
+        do j = iat(i), iat(i+1) - 1
+            coef(j) = pivot * coef(j)
+        end do
+    end do
+end subroutine
+
+
+subroutine jacobi_precond_rhs(A, b)
+    ! Apply the preconditioning only to the right hand side
+
+    type(CSRMAT), intent(in)    :: A
+    real(dp), intent(inout)     :: b(:)
+
+    real(dp), pointer           :: coef(:)
+    integer, pointer            :: iat(:), ja(:)
+    integer                     :: i, j, n
+    real(dp)                    :: pivot
+
+    ! setting handles
+    coef => A%coef
+    iat => A%patt%iat
+    ja => A%patt%ja
+
+    pivot = 1.0_dp
+    n = A%patt%nrows
+    if (n.ne.size(b)) stop 'ERROR: wrong system shape (jacobi_precond)'
+
+    do i = 1, n
+        ! finding pivot, a.k.a. the diagonal element
+        do j = iat(i), iat(i+1) - 1
+            if (ja(j).eq.i) then
+                if (coef(j).eq.0.0_dp) then
+                    stop 'ERROR: diagonal element is zero (jacobi_precond)'
+                end if
+                pivot = 1.0_dp / coef(j)
+                exit
+            end if
+        end do
+
+        b(i) = pivot * b(i)
+    end do
+end subroutine
+
 end module BLAS
