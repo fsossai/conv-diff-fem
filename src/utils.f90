@@ -5,9 +5,9 @@ module utils
 contains
 
 subroutine write_vec(name, x)
-    integer :: n
-    character(len=*), intent(in) :: name
-    real(dp), intent(in) :: x(:)
+    character(len=*), intent(in)    :: name
+    real(dp), intent(in)            :: x(:)
+    integer                         :: n
     
     n = size(x)
     open(unit=1, file=name)
@@ -16,13 +16,14 @@ subroutine write_vec(name, x)
 end subroutine
 
 
-subroutine write_csrmat(name, A)
-    character(len=*), intent(in) :: name
-    type(CSRMAT), intent(in) :: A
-    integer, pointer :: iat(:), ja(:)
-    real(dp), pointer :: coef(:)
-    character(len=20) :: frmt = '(i7,1x,i7,1x,1e15.8)'
-    integer :: n,i,j,c_start,c_end
+subroutine write_CSRMAT(name, A)
+    character(len=*), intent(in)    :: name
+    type(CSRMAT), intent(in)        :: A
+
+    integer, pointer                :: iat(:), ja(:)
+    real(dp), pointer               :: coef(:)
+    character(len=20)               :: frmt = '(i7,1x,i7,1x,1e15.8)'
+    integer                         :: n, i, j, c_start, c_end
 
     ! creating handles
     iat => A%patt%iat
@@ -45,9 +46,9 @@ end subroutine
 
 
 subroutine print_vec_compact(x, cols)
-    real(dp), intent(in) :: x(:)
-    integer, optional, intent(in) :: cols
-    integer :: i,j,n,c
+    real(dp), intent(in)            :: x(:)
+    integer, optional, intent(in)   :: cols
+    integer                         :: i,j,n,c
     n = size(x)
     
     c = 5 ! default value
