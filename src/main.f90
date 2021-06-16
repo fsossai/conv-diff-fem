@@ -31,8 +31,11 @@ call getarg(2, arg_topo)
 call cpu_time(clock_t_start)
 timer = omp_get_wtime()
 
+print '(a)', 'Reading coordinates file...'
 call read_coord(arg_coord, coord)
+print '(a)', 'Reading topology file...'
 call read_topo(arg_topo, topo)
+
 nnodes = size(coord, 1)
 nelem = size(topo, 1)
 print '(a20,i10)', 'Number of nodes:',      nnodes

@@ -192,8 +192,8 @@ subroutine solve(coord, topo, x0, x)
     real(dp), intent(in)    :: x0(:)
     real(dp), intent(out)   :: x(:)
 
-    integer, parameter      :: max_it = 1
-    integer, parameter      :: bicgstab_max_it = 10000
+    integer, parameter      :: max_it = 100
+    integer, parameter      :: bicgstab_max_it = 200
     real(dp), parameter     :: boundary_cond = 5.0_dp
     type(CSRMAT)            :: H, B, P, M
     real(dp), allocatable   :: q(:), rhs(:), diag(:)
@@ -224,10 +224,20 @@ subroutine solve(coord, topo, x0, x)
 
     do i = 1, max_it
         print *, 'Iteration:', i
+
+        call assemble(coord, topo, H, B, P, q)
+
+        ! Setting up the the matrix and the RHS of the linear system
+        M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
+        call get_diag(M, diag)
+        call jacobi_precond_mat(M)
+
         ! imposing the Dirichlet boundary conditions
         x(bnodes) = boundary_cond
+
         ! solving the linear system
         call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
+        
         ! preconditioning 
         rhs = rhs / diag
         call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)

@@ -11,7 +11,20 @@ bicgstab: csrmat blas
 		$(source_dir)/bicgstab.f90 \
 		$(source_dir)/*.f \
 		bm_bicgstab.f90 \
-		-o bicgstab.out
+		-o $@.out
+
+assemble: csrmat
+	$(cc) $(flags) -I$(include_dir) \
+		$(source_dir)/readers.f90 \
+		$(source_dir)/blas.f90 \
+		$(source_dir)/utils.f90 \
+		$(source_dir)/bicgstab.f90 \
+		$(source_dir)/fem.f90 \
+		$(source_dir)/CSRMAT.f90 \
+		$(source_dir)/irow2iat.f90 \
+		$(source_dir)/*.f \
+		bm_assemble.f90 \
+		-o $@.out
 
 amxpby: csrmat blas
 	$(cc) $(flags) -I$(include_dir)	$(source_dir)/blas.f90 \
