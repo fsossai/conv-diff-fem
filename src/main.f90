@@ -17,13 +17,22 @@ real(dp)                :: timer, clock_t_start, clock_t_end
 integer                 :: nnodes, nelem
 integer, allocatable    :: topo(:,:)
 real(dp), allocatable   :: coord(:,:)
+character(100)          :: arg_coord, arg_topo
+
+! Checking input arguments
+if (iargc().lt.2) then
+    stop 'Missing arguments. Please specify coordinates and topology files.'
+end if
+
+call getarg(1, arg_coord)
+call getarg(2, arg_topo)
 
 ! Core computations
 call cpu_time(clock_t_start)
 timer = omp_get_wtime()
 
-call read_coord('inputs/grid1.coord.txt', coord)
-call read_topo('inputs/grid1.topo.txt', topo)
+call read_coord(arg_coord, coord)
+call read_topo(arg_topo, topo)
 nnodes = size(coord, 1)
 nelem = size(topo, 1)
 print '(a20,i10)', 'Number of nodes:',      nnodes

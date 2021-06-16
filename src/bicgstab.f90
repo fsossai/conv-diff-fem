@@ -55,6 +55,7 @@ r0 = r
 p = r
 
 do j = 1,max_iterations
+    if (modulo(j, 100).eq.0) print *, 'BiCGSTAB, it:', j, 'Residual:', norm2(r)
     if (norm2(r) <= tolerance) exit
     
     ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)

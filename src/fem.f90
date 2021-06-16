@@ -194,8 +194,9 @@ subroutine solve(coord, topo, x0, x)
 
     integer, parameter      :: max_it = 1
     integer, parameter      :: bicgstab_max_it = 10000
+    real(dp), parameter     :: boundary_cond = 5.0_dp
     type(CSRMAT)            :: H, B, P, M
-    real(dp), allocatable   :: q(:), rhs(:)
+    real(dp), allocatable   :: q(:), rhs(:), diag(:)
     integer, allocatable    :: bnodes(:)
     integer                 :: nnodes, nelem, i, ierr
     real(dp)                :: dt = 0.01
@@ -205,7 +206,7 @@ subroutine solve(coord, topo, x0, x)
     nnodes = size(coord, 1)
     nelem = size(topo, 1)
 
-    allocate(q(nnodes), rhs(nnodes))
+    allocate(q(nnodes), rhs(nnodes), diag(nnodes))
     
     call get_boundaries(coord, 1e-5_dp, bnodes)
     call create_pattern(nnodes, topo, H)
@@ -216,18 +217,20 @@ subroutine solve(coord, topo, x0, x)
 
     ! Setting up the the matrix and the RHS of the linear system
     M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
-    !call jacobi_precond_mat(M)
+    call get_diag(M, diag)
+    call jacobi_precond_mat(M)
+
     x = x0
 
     do i = 1, max_it
         print *, 'Iteration:', i
         ! imposing the Dirichlet boundary conditions
-        x(bnodes) = 5.0_dp
+        x(bnodes) = boundary_cond
         ! solving the linear system
         call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
-        !call jacobi_precond_rhs(M, rhs)
+        ! preconditioning 
+        rhs = rhs / diag
         call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)
-        !call print_vec_compact(x, 5)
     end do
 
     ierr = 0
@@ -237,7 +240,7 @@ subroutine solve(coord, topo, x0, x)
     ierr = ierr + dlt_CSRMAT(M)
     if (ierr .ne. 0) stop 'ERROR: failed to delete one or more CSRMAT in "solve".'
     
-    deallocate(q, rhs)
+    deallocate(q, rhs, diag)
 
 end subroutine
 
