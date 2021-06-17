@@ -32,7 +32,7 @@ subroutine assemble(coord, topo, H, B, P, q)
 
     q = 0.0_dp
     
-    !$omp parallel do shared(H, B, P) private(nodes,T,C,area,grad,He,Be,Pe,qe)
+    !$omp parallel do shared(H,B,P,q,diff,vel,ne,coord,topo) private(nodes,T,C,area,grad,He,Be,Pe,qe)
     do i = 1, ne
         nodes = topo(i, :)
         
@@ -54,7 +54,7 @@ subroutine assemble(coord, topo, H, B, P, q)
         qe = area / 3.0_dp
 
         ! update the global matrices
-        !$omp critical
+        !!$omp critical
 
         ! H(nodes, nodes) = H(nodes, nodes) + He
         call spmat_update(H, nodes, He)
@@ -68,7 +68,7 @@ subroutine assemble(coord, topo, H, B, P, q)
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
 
-        !$omp end critical
+        !!$omp end critical
         
     end do
 
