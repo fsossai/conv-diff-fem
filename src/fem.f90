@@ -32,6 +32,7 @@ subroutine assemble(coord, topo, H, B, P, q)
 
     q = 0.0_dp
     
+    !$omp parallel do shared(H, B, P) private(nodes,T,C,area,grad,He,Be,Pe,qe)
     do i = 1, ne
         nodes = topo(i, :)
         
@@ -53,6 +54,7 @@ subroutine assemble(coord, topo, H, B, P, q)
         qe = area / 3.0_dp
 
         ! update the global matrices
+        !$omp critical
 
         ! H(nodes, nodes) = H(nodes, nodes) + He
         call spmat_update(H, nodes, He)
@@ -62,10 +64,12 @@ subroutine assemble(coord, topo, H, B, P, q)
         
         ! P(nodes, nodes) = P(nodes, nodes) + Pe
         call spmat_update(P, nodes, Pe)
-
+        
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
 
+        !$omp end critical
+        
     end do
 
 end subroutine
@@ -210,9 +214,9 @@ subroutine solve(coord, topo, x0, x)
     
     call get_boundaries(coord, 1e-5_dp, bnodes)
     call create_pattern(nnodes, topo, H)
-    call copy_CSRMAT(B, H)
-    call copy_CSRMAT(P, H)
-    call copy_CSRMAT(M, H)
+    call copy_Pattern(B, H)
+    call copy_Pattern(P, H)
+    call copy_Pattern(M, H)
     call assemble(coord, topo, H, B, P, q)
 
     ! Setting up the the matrix and the RHS of the linear system
@@ -237,7 +241,7 @@ subroutine solve(coord, topo, x0, x)
 
         ! solving the linear system
         call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
-        
+
         ! preconditioning 
         rhs = rhs / diag
         call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)

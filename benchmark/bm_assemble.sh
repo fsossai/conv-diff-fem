@@ -3,8 +3,8 @@
 echo "Benchmarking the system matrix assembly."
 
 program=assemble.out
-coord_file=../inputs/grid1.coord.txt
-topo_file=../inputs/grid1.topo.txt
+coord_file=../inputs/grid2.coord.txt
+topo_file=../inputs/grid2.topo.txt
 
 echo "Coordinate file: ${coord_file}"
 echo "Topology file:   ${topo_file}"
