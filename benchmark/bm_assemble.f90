@@ -42,18 +42,27 @@ print '(a25,i15)', 'Number of nodes:',      nnodes
 print '(a25,i15)', 'Number of elements:',   nelem
 print '(a25,i15)', 'Number of iterations:', max_it
 
+call create_pattern(nnodes, topo, H)
+call copy_Pattern(B, H)
+call copy_Pattern(P, H)
+call copy_Pattern(M, H)
+
 ! Assembling the system matrix
 timer = omp_get_wtime()
 
 do it = 1, max_it
-    call create_pattern(nnodes, topo, H)
-    call copy_Pattern(B, H)
-    call copy_Pattern(P, H)
-    call copy_Pattern(M, H)
+    ! Reset
+    H%coef = 0.0_dp
+    B%coef = 0.0_dp
+    P%coef = 0.0_dp
+    q = 0.0_dp
+    ! Assembly
     call assemble(coord, topo, H, B, P, q)
-    M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
 end do
+
 timer = omp_get_wtime() - timer
+
+M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
 
 print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
