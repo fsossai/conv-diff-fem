@@ -225,7 +225,7 @@ use class_Pattern
 implicit none
 
 ! Public member function/subroutines
-public  :: new_CSRMAT,dlt_CSRMAT,new_CSRCOEF,dlt_CSRCOEF,copy_CSRMAT,wrCSR_unit
+public  :: new_CSRMAT,dlt_CSRMAT,new_CSRCOEF,dlt_CSRCOEF,copy_CSRMAT,wrCSR_unit,copy_Pattern
 public  :: errchk_CSRMAT
 
 !> @brief matrix stored in CSR format
@@ -607,6 +607,63 @@ contains
             print *
          end if
       end do
+   end subroutine
+
+
+   subroutine copy_Pattern(Mout, Min)
+      type(CSRMAT), intent(inout)   :: Mout
+      type(CSRMAT), intent(in)      :: Min
+
+      integer                       :: nn, nt
+      logical                       :: realloc
+
+      nn = Min%patt%nrows
+      nt = Min%patt%nterm
+
+      ! Checking coef array
+      realloc = .true.
+      if (associated(Mout%coef)) then
+         if (size(Mout%coef).eq.nt) then
+            realloc = .false.
+         else
+            deallocate(Mout%coef)
+         end if
+      end if
+      if (realloc) then
+         allocate(Mout%coef(nt))
+      end if
+
+      ! Checking iat array
+      realloc = .true.
+      if (associated(Mout%patt%iat)) then
+         if (size(Mout%patt%iat).eq.(nn+1)) then
+            realloc = .false.
+         else
+            deallocate(Mout%patt%iat)
+         end if
+      end if
+      if (realloc) then
+         allocate(Mout%patt%iat(nn+1))
+      end if
+
+      ! Checking ja array
+      realloc = .true.
+      if (associated(Mout%patt%ja)) then
+         if (size(Mout%patt%ja).eq.nt) then
+            realloc = .false.
+         else
+            deallocate(Mout%patt%ja)
+         end if
+      end if
+      if (realloc) then
+         allocate(Mout%patt%ja(nt))
+      end if
+
+      ! Copying iat and ja
+      Mout%patt%iat = Min%patt%iat
+      Mout%patt%ja = Min%patt%ja
+      Mout%patt%nrows = nn
+      Mout%patt%nterm = nt
    end subroutine
 
 end module class_CSRMAT
