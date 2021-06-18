@@ -7,7 +7,7 @@ module fem
 
 contains
 
-subroutine assemble(coord, topo, H, B, P, q)
+subroutine assemble_old(coord, topo, H, B, P, q)
     real(dp), intent(in)        :: coord(:,:)
     integer, intent(in)         :: topo(:,:)
     type(CSRMAT), intent(inout) :: H, B, P
@@ -61,6 +61,72 @@ subroutine assemble(coord, topo, H, B, P, q)
         
         ! B(nodes, nodes) = B(nodes, nodes) + Be
         call spmat_update(B, nodes, Be)
+        
+        ! P(nodes, nodes) = P(nodes, nodes) + Pe
+        call spmat_update(P, nodes, Pe)
+        
+        ! q(nodes) = q(nodes) + qe
+        q(nodes) = q(nodes) + qe
+
+        !!$omp end critical
+        
+    end do
+
+end subroutine
+
+
+subroutine assemble(coord, topo, dt, H, P, q)
+    real(dp), intent(in)        :: coord(:,:)
+    integer, intent(in)         :: topo(:,:)
+    real(dp), intent(in)        :: dt
+    type(CSRMAT), intent(inout) :: H, P
+    real(dp), intent(out)       :: q(:)
+
+    integer                     :: i, ne, nn
+    integer                     :: nodes(3)
+    real(dp), dimension(3,3)    :: T, C, He, Pe
+    real(dp)                    :: area, grad(2,3), diff(2,2), qe, &
+                                   ones3x1(3,1), vel(1,2)
+
+    diff = 0.0_dp               ! Diffusivity coefficients
+    diff(1,1) = 1.0_dp
+    diff(2,2) = 1.0_dp
+    ones3x1 = 1.0_dp
+    vel = 1e-2_dp               ! (constant) velocity field
+
+    ne = size(topo, 1)          ! Number of elements
+    nn = size(coord, 1)         ! Number of nodes
+
+    if (size(topo, 2) .ne. 3) stop 'ERROR: elements are not triangles.'
+
+    q = 0.0_dp
+    
+    !$omp parallel do shared(H,P,q,diff,vel,ne,coord,topo) private(nodes,T,C,area,grad,He,Pe,qe)
+    do i = 1, ne
+        nodes = topo(i, :)
+        
+        T = 1.0_dp
+        T(:, 2:3) = coord(nodes, :)
+        area = abs(det3x3(T)) / 2.0_dp
+        call inv3x3(T, C)
+        grad = C(2:3, :)
+        
+        Pe = area / 12.0_dp
+        Pe(1, 1) = area / 6.0_dp
+        Pe(2, 2) = area / 6.0_dp
+        Pe(3, 3) = area / 6.0_dp
+        
+        He = area * matmul(transpose(grad), matmul(diff, grad)) &
+           + matmul(ones3x1, matmul(vel, grad) / 6.0_dp)        &
+           + Pe / dt
+        
+        qe = area / 3.0_dp
+        
+        ! update the global matrices
+        !!$omp critical
+
+        ! H(nodes, nodes) = H(nodes, nodes) + He
+        call spmat_update(H, nodes, He)
         
         ! P(nodes, nodes) = P(nodes, nodes) + Pe
         call spmat_update(P, nodes, Pe)
@@ -199,7 +265,7 @@ subroutine solve(coord, topo, x0, x)
     integer, parameter      :: max_it = 100
     integer, parameter      :: bicgstab_max_it = 200
     real(dp), parameter     :: boundary_cond = 5.0_dp
-    type(CSRMAT)            :: H, B, P, M
+    type(CSRMAT)            :: H, P
     real(dp), allocatable   :: q(:), rhs(:), diag(:)
     integer, allocatable    :: bnodes(:)
     integer                 :: nnodes, nelem, i, ierr
@@ -214,27 +280,23 @@ subroutine solve(coord, topo, x0, x)
     
     call get_boundaries(coord, 1e-5_dp, bnodes)
     call create_pattern(nnodes, topo, H)
-    call copy_Pattern(B, H)
     call copy_Pattern(P, H)
-    call copy_Pattern(M, H)
-    call assemble(coord, topo, H, B, P, q)
+    call assemble(coord, topo, dt, H, P, q)
 
     ! Setting up the the matrix and the RHS of the linear system
-    M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
-    call get_diag(M, diag)
-    call jacobi_precond_mat(M)
+    call get_diag(H, diag)
+    call jacobi_precond_mat(H)
 
     x = x0
 
     do i = 1, max_it
         print *, 'Iteration:', i
 
-        call assemble(coord, topo, H, B, P, q)
+        call assemble(coord, topo, dt, H, P, q)
 
         ! Setting up the the matrix and the RHS of the linear system
-        M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
-        call get_diag(M, diag)
-        call jacobi_precond_mat(M)
+        call get_diag(H, diag)
+        call jacobi_precond_mat(H)
 
         ! imposing the Dirichlet boundary conditions
         x(bnodes) = boundary_cond
@@ -244,14 +306,12 @@ subroutine solve(coord, topo, x0, x)
 
         ! preconditioning 
         rhs = rhs / diag
-        call bicgstab(M, rhs, x, 1e-5_dp, bicgstab_max_it)
+        call bicgstab(H, rhs, x, 1e-5_dp, bicgstab_max_it)
     end do
 
     ierr = 0
     ierr = ierr + dlt_CSRMAT(H)
-    ierr = ierr + dlt_CSRMAT(B)
     ierr = ierr + dlt_CSRMAT(P)
-    ierr = ierr + dlt_CSRMAT(M)
     if (ierr .ne. 0) stop 'ERROR: failed to delete one or more CSRMAT in "solve".'
     
     deallocate(q, rhs, diag)
@@ -305,5 +365,44 @@ function has_diagonal(A, r) result(flag)
 
 end function
 
+
+function get_idx(A, nodes) result(idx)
+    type(CSRMAT), intent(inout) :: A
+    integer, intent(in)         :: nodes(3)
+    integer                     :: idx(9)
+
+    integer                     :: i, j, k, offset, ii, jj, h
+    real(dp), pointer           :: coef(:) => null()
+    integer, pointer            :: iat(:) => null(), ja(:) => null()
+
+    ! handles to the sparse matrix
+    coef => A%coef
+    iat => A%patt%iat
+    ja => A%patt%ja
+
+    h = 0
+    do i = 1, 3
+        do j = 1, 3
+            ! Finding the position of (indices(i), indices(j)) in
+            ! the sparse matrix coefficient array
+
+            ii = nodes(i)
+            jj = nodes(j)
+            offset = iat(ii)
+
+            ! We assume that the sparse matrix has a suitable
+            ! pattern. If this condition is not met, the following
+            ! loop will cause a segmentation fault.
+            k = 0
+            do while (ja(offset + k).ne.jj)
+                k = k + 1
+            end do
+
+            h = h + 1
+            idx(h) = offset + k
+        end do
+    end do
+
+end function
 
 end module fem

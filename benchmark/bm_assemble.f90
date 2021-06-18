@@ -11,7 +11,7 @@ real(dp)                :: timer
 real(dp), allocatable   :: coord(:,:)
 integer, allocatable    :: topo(:,:)
 real(dp), parameter     :: boundary_cond = 5.0_dp, dt = 0.001_dp
-type(CSRMAT)            :: H, B, P, M
+type(CSRMAT)            :: H, P
 real(dp), allocatable   :: q(:)
 integer                 :: nnodes, nelem, ierr, it, i
 integer, parameter      :: max_it = 10
@@ -43,9 +43,7 @@ print '(a25,i15)', 'Number of elements:',   nelem
 print '(a25,i15)', 'Number of iterations:', max_it
 
 call create_pattern(nnodes, topo, H)
-call copy_Pattern(B, H)
 call copy_Pattern(P, H)
-call copy_Pattern(M, H)
 
 ! Assembling the system matrix
 timer = omp_get_wtime()
@@ -53,33 +51,28 @@ timer = omp_get_wtime()
 do it = 1, max_it
     ! Reset
     H%coef = 0.0_dp
-    B%coef = 0.0_dp
     P%coef = 0.0_dp
     q = 0.0_dp
     ! Assembly
-    call assemble(coord, topo, H, B, P, q)
+    call assemble(coord, topo, dt, H, P, q)
 end do
 
 timer = omp_get_wtime() - timer
 
-M%coef = H%coef + B%coef + (1.0_dp / dt) * P%coef
-
 print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
 ! Writing to file
-!print '(a)', 'Exporting matrix to file...'
-!call write_CSRMAT('mat.txt', M)
+print '(a)', 'Exporting matrix to file...'
+call write_CSRMAT('mat.txt', H)
 
 ! Showing the first row
 print *, 'First row:'
-print '(*(en20.8,1x))', (M%coef(i), i=M%patt%iat(1),M%patt%iat(2)-1)
+print '(*(en20.8,1x))', (H%coef(i), i=H%patt%iat(1),H%patt%iat(2)-1)
 
 ! Deleting/deallocating all matrices
 ierr = 0
 ierr = ierr + dlt_CSRMAT(H)
-ierr = ierr + dlt_CSRMAT(B)
 ierr = ierr + dlt_CSRMAT(P)
-ierr = ierr + dlt_CSRMAT(M)
 if (ierr.ne.0) stop 'ERROR: failed to delete one or more CSRMAT.'
 deallocate(q)
 
