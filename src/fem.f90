@@ -82,7 +82,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
 
-    integer                             :: i, ne, nn, j, ii
+    integer                             :: i, ne, nn
     integer                             :: nodes(3), idx(9)
     real(dp), dimension(3,3)            :: T, C
     real(dp), target, dimension(3,3)    :: He, Pe
@@ -103,7 +103,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     q = 0.0_dp
     
-    !$omp parallel do shared(H,P,q,diff,vel,ne,coord,topo) private(nodes,T,C,area,grad,He,Pe,qe)
+    !$omp parallel do shared(H,P,q,ne,coord,topo) firstprivate(diff,vel) private(nodes,T,C,area,grad,He,Pe,qe) 
     do i = 1, ne
         nodes = topo(i, :)
         
@@ -132,12 +132,11 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
         !!$omp critical
 
-        ! H(nodes, nodes) = H(nodes, nodes) + He
-        
         ! Flattening local matrices
         He_flat(1:9) => He(:,:)
         Pe_flat(1:9) => Pe(:,:)
-
+        
+        ! H(nodes, nodes) = H(nodes, nodes) + He
         H%coef(idx) = H%coef(idx) + He_flat
         
         ! P(nodes, nodes) = P(nodes, nodes) + Pe

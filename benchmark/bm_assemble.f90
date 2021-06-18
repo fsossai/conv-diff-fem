@@ -62,8 +62,8 @@ timer = omp_get_wtime() - timer
 print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
 ! Writing to file
-print '(a)', 'Exporting matrix to file...'
-call write_CSRMAT('mat.txt', H)
+!print '(a)', 'Exporting matrix to file...'
+!call write_CSRMAT('mat.txt', H)
 
 ! Showing the first row
 print *, 'First row:'

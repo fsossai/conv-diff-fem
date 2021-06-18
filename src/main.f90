@@ -28,8 +28,6 @@ call getarg(1, arg_coord)
 call getarg(2, arg_topo)
 
 ! Core computations
-call cpu_time(clock_t_start)
-timer = omp_get_wtime()
 
 print '(a)', 'Reading coordinates file...'
 call read_coord(arg_coord, coord)
@@ -42,10 +40,16 @@ print '(a20,i10)', 'Number of nodes:',      nnodes
 print '(a20,i10)', 'Number of elements:',   nelem
 allocate(x(nnodes), x0(nnodes))
 x0 = 0.0_dp
-call solve(coord, topo, x0, x)
 
-timer = omp_get_wtime() - timer
-call cpu_time(clock_t_end)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+call cpu_time(clock_t_start)                        !!
+timer = omp_get_wtime()                             !!
+                                                    !!
+call solve(coord, topo, x0, x)                      !!
+                                                    !!
+timer = omp_get_wtime() - timer                     !!
+call cpu_time(clock_t_end)                          !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !call print_vec_compact(x, 5)
 call write_vec('solution.txt', x)
