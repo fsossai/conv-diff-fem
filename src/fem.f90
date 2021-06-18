@@ -99,11 +99,18 @@ subroutine assemble(coord, topo, dt, H, P, q)
     ne = size(topo, 1)          ! Number of elements
     nn = size(coord, 1)         ! Number of nodes
 
-    if (size(topo, 2) .ne. 3) stop 'ERROR: elements are not triangles.'
+    if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
     q = 0.0_dp
     
-    !$omp parallel do shared(H,P,q,ne,coord,topo) firstprivate(diff,vel) private(nodes,T,C,area,grad,He,Pe,qe) 
+    !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt) & 
+    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx)
+
+    ! Flattening local matrices
+    He_flat(1:9) => He(:,:)
+    Pe_flat(1:9) => Pe(:,:)
+    
+    !$omp do
     do i = 1, ne
         nodes = topo(i, :)
         
@@ -130,12 +137,9 @@ subroutine assemble(coord, topo, dt, H, P, q)
         ! in the sparse matrix
         idx = get_idx(H, nodes)
 
-        !!$omp critical
-
-        ! Flattening local matrices
-        He_flat(1:9) => He(:,:)
-        Pe_flat(1:9) => Pe(:,:)
         
+        !$omp critical
+
         ! H(nodes, nodes) = H(nodes, nodes) + He
         H%coef(idx) = H%coef(idx) + He_flat
         
@@ -145,9 +149,11 @@ subroutine assemble(coord, topo, dt, H, P, q)
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
 
-        !!$omp end critical
+        !$omp end critical
         
     end do
+
+    !$omp end parallel
 
 end subroutine
 
