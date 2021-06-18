@@ -43,16 +43,21 @@ allocate(r(n), r0(n), r_new(n), p(n), s(n), A_p(n), A_s(n))
 ! Start of BiCGSTAB algorithm
 
 ! the initial guess is the zero-vector
+!$omp parallel workshare
 x = 0.0_dp
+!$omp end parallel workshare
 
 ! r_0 = b - A x_0
 call amxpby(r, -1.0_dp, A, x, 1.0_dp, b)
 
+!$omp parallel workshare
 ! r_0^ arbitrary
 r0 = r
 
 ! p0 = r0
 p = r
+!$omp end parallel workshare
+
 
 do j = 1,max_iterations
     n2 = norm(r)
@@ -84,7 +89,9 @@ do j = 1,max_iterations
     call axpby(p, -omega, A_p)
     call axpby_set(p, 1.0_dp, r_new, beta, p)
 
+    !$omp parallel workshare
     r = r_new
+    !$omp end parallel workshare
 end do
 
 print *, 'BiCGSTAB iterations:', j-1
