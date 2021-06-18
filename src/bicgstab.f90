@@ -13,7 +13,7 @@ real(dp), intent(out)               :: x(:)
 real(dp), optional, intent(in)      :: tol
 integer, optional, intent(in)       :: max_it
 integer :: j, n, max_iterations
-real(dp) :: alpha, beta, omega, r_r0, tolerance
+real(dp) :: alpha, beta, omega, r_r0, tolerance, n2
 real(dp), allocatable, dimension(:) :: r, r0, r_new, p, s, A_p, A_s
 
 ! handles for the matrix
@@ -55,8 +55,9 @@ r0 = r
 p = r
 
 do j = 1,max_iterations
-    if (modulo(j, 100).eq.0) print *, 'BiCGSTAB, it:', j, 'Residual:', norm2(r)
-    if (norm2(r) <= tolerance) exit
+    n2 = norm(r)
+    if (modulo(j, 100).eq.0) print *, 'BiCGSTAB, it:', j, 'Residual:', n2
+    if (n2 <= tolerance) exit
     
     ! alpha_j = (r_j,r_0^) / (A p_j, r_0^)
     r_r0 = inner_prod(r, r0)
