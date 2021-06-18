@@ -5,7 +5,7 @@ source_dir=../src
 
 bicgstab: csrmat blas
 	$(cc) $(flags) -I$(include_dir)	$(source_dir)/blas.f90 \
-		$(source_dir)/readmat.f90 \
+		$(source_dir)/readers.f90 \
 		$(source_dir)/CSRMAT.f90 \
 		$(source_dir)/irow2iat.f90 \
 		$(source_dir)/bicgstab.f90 \
@@ -28,7 +28,7 @@ assemble: csrmat
 
 amxpby: csrmat blas
 	$(cc) $(flags) -I$(include_dir)	$(source_dir)/blas.f90 \
-		$(source_dir)/readmat.f90 \
+		$(source_dir)/readers.f90 \
 		$(source_dir)/CSRMAT.f90 \
 		$(source_dir)/irow2iat.f90 \
 		$(source_dir)/*.f \
