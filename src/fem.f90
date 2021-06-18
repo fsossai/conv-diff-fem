@@ -76,17 +76,19 @@ end subroutine
 
 
 subroutine assemble(coord, topo, dt, H, P, q)
-    real(dp), intent(in)        :: coord(:,:)
-    integer, intent(in)         :: topo(:,:)
-    real(dp), intent(in)        :: dt
-    type(CSRMAT), intent(inout) :: H, P
-    real(dp), intent(out)       :: q(:)
+    real(dp), intent(in)                :: coord(:,:)
+    integer, intent(in)                 :: topo(:,:)
+    real(dp), intent(in)                :: dt
+    type(CSRMAT), intent(inout)         :: H, P
+    real(dp), intent(out)               :: q(:)
 
-    integer                     :: i, ne, nn
-    integer                     :: nodes(3)
-    real(dp), dimension(3,3)    :: T, C, He, Pe
-    real(dp)                    :: area, grad(2,3), diff(2,2), qe, &
-                                   ones3x1(3,1), vel(1,2)
+    integer                             :: i, ne, nn, j, ii
+    integer                             :: nodes(3), idx(9)
+    real(dp), dimension(3,3)            :: T, C
+    real(dp), target, dimension(3,3)    :: He, Pe
+    real(dp), pointer, dimension(:)     :: He_flat, Pe_flat
+    real(dp)                            :: area, grad(2,3), diff(2,2), qe, &
+                                           ones3x1(3,1), vel(1,2)
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -123,13 +125,23 @@ subroutine assemble(coord, topo, dt, H, P, q)
         qe = area / 3.0_dp
         
         ! update the global matrices
+
+        ! Getting the index of the entry to be updated
+        ! in the sparse matrix
+        idx = get_idx(H, nodes)
+
         !!$omp critical
 
         ! H(nodes, nodes) = H(nodes, nodes) + He
-        call spmat_update(H, nodes, He)
+        
+        ! Flattening local matrices
+        He_flat(1:9) => He(:,:)
+        Pe_flat(1:9) => Pe(:,:)
+
+        H%coef(idx) = H%coef(idx) + He_flat
         
         ! P(nodes, nodes) = P(nodes, nodes) + Pe
-        call spmat_update(P, nodes, Pe)
+        P%coef(idx) = P%coef(idx) + Pe_flat
         
         ! q(nodes) = q(nodes) + qe
         q(nodes) = q(nodes) + qe
@@ -381,8 +393,8 @@ function get_idx(A, nodes) result(idx)
     ja => A%patt%ja
 
     h = 0
-    do i = 1, 3
-        do j = 1, 3
+    do j = 1, 3
+        do i = 1, 3
             ! Finding the position of (indices(i), indices(j)) in
             ! the sparse matrix coefficient array
 
