@@ -7,7 +7,7 @@ use utils, only: write_CSRMAT
 
 include 'readers.h'
 
-real(dp)                :: timer
+real(dp)                :: timer, delta
 real(dp), allocatable   :: coord(:,:)
 integer, allocatable    :: topo(:,:)
 real(dp), parameter     :: boundary_cond = 5.0_dp, dt = 0.001_dp
@@ -46,18 +46,19 @@ call create_pattern(nnodes, topo, H)
 call copy_Pattern(P, H)
 
 ! Assembling the system matrix
-timer = omp_get_wtime()
-
+timer = 0.0_dp
 do it = 1, max_it
     ! Reset
     H%coef = 0.0_dp
     P%coef = 0.0_dp
     q = 0.0_dp
+    
     ! Assembly
+    delta = omp_get_wtime()
     call assemble(coord, topo, dt, H, P, q)
+    timer = timer + omp_get_wtime() - delta
 end do
 
-timer = omp_get_wtime() - timer
 
 print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
