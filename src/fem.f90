@@ -7,73 +7,6 @@ module fem
 
 contains
 
-subroutine assemble_old(coord, topo, H, B, P, q)
-    real(dp), intent(in)        :: coord(:,:)
-    integer, intent(in)         :: topo(:,:)
-    type(CSRMAT), intent(inout) :: H, B, P
-    real(dp), intent(out)       :: q(:)
-
-    integer                     :: i, ne, nn
-    integer                     :: nodes(3)
-    real(dp), dimension(3,3)    :: T, C, He, Be, Pe
-    real(dp)                    :: area, grad(2,3), diff(2,2), qe, &
-                                   ones3x1(3,1), vel(1,2)
-
-    diff = 0.0_dp               ! Diffusivity coefficients
-    diff(1,1) = 1.0_dp
-    diff(2,2) = 1.0_dp
-    ones3x1 = 1.0_dp
-    vel = 1e-2_dp               ! (constant) velocity field
-
-    ne = size(topo, 1)          ! Number of elements
-    nn = size(coord, 1)         ! Number of nodes
-
-    if (size(topo, 2) .ne. 3) stop 'ERROR: elements are not triangles.'
-
-    q = 0.0_dp
-    
-    !$omp parallel do shared(H,B,P,q,diff,vel,ne,coord,topo) private(nodes,T,C,area,grad,He,Be,Pe,qe)
-    do i = 1, ne
-        nodes = topo(i, :)
-        
-        T = 1.0_dp
-        T(:, 2:3) = coord(nodes, :)
-        area = abs(det3x3(T)) / 2.0_dp
-        call inv3x3(T, C)
-        grad = C(2:3, :)
-        
-        He = area * matmul(transpose(grad), matmul(diff, grad))
-        
-        Be = matmul(ones3x1, matmul(vel, grad) / 6.0_dp)
-        
-        Pe = area / 12.0_dp
-        Pe(1, 1) = area / 6.0_dp
-        Pe(2, 2) = area / 6.0_dp
-        Pe(3, 3) = area / 6.0_dp
-
-        qe = area / 3.0_dp
-
-        ! update the global matrices
-        !!$omp critical
-
-        ! H(nodes, nodes) = H(nodes, nodes) + He
-        call spmat_update(H, nodes, He)
-        
-        ! B(nodes, nodes) = B(nodes, nodes) + Be
-        call spmat_update(B, nodes, Be)
-        
-        ! P(nodes, nodes) = P(nodes, nodes) + Pe
-        call spmat_update(P, nodes, Pe)
-        
-        ! q(nodes) = q(nodes) + qe
-        q(nodes) = q(nodes) + qe
-
-        !!$omp end critical
-        
-    end do
-
-end subroutine
-
 
 subroutine assemble(coord, topo, dt, H, P, q)
     real(dp), intent(in)                :: coord(:,:)
@@ -82,13 +15,14 @@ subroutine assemble(coord, topo, dt, H, P, q)
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
 
-    integer                             :: i, ne, nn
-    integer                             :: nodes(3), idx(9)
+    integer                             :: i, ne, nn, nthreads, tid
+    integer                             :: nodes(3), idx(9), regions(3)
     real(dp), dimension(3,3)            :: T, C
     real(dp), target, dimension(3,3)    :: He, Pe
     real(dp), pointer, dimension(:)     :: He_flat, Pe_flat
     real(dp)                            :: area, grad(2,3), diff(2,2), qe, &
                                            ones3x1(3,1), vel(1,2)
+    logical                             :: frontier
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -103,17 +37,36 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     q = 0.0_dp
     
-    !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt) & 
-    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx)
+    !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt,nn) & 
+    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier)
 
+    nthreads = omp_get_num_threads()
+    tid = omp_get_thread_num()
+    
     ! Flattening local matrices
     He_flat(1:9) => He(:,:)
     Pe_flat(1:9) => Pe(:,:)
     
-    !$omp do
     do i = 1, ne
         nodes = topo(i, :)
+
+        ! Getting which thread every node of 'nodes' belogs to
+        call get_regions(nodes, nn, nthreads, regions)
         
+        frontier = .false.  ! Suppose that we don't need a critical section
+        ! Checking whether the element is external,
+        ! in that case we have to decide if the element
+        ! has to be processed anyway.
+        if (any(regions.ne.tid)) then
+            ! The current element is external.
+            ! The following condition is totally arbitrary.
+            if (minval(regions).eq.tid) then
+                frontier = .true.   ! A critical section is needed
+            else
+                cycle               ! Skip this element
+            end if
+        end if
+
         T = 1.0_dp
         T(:, 2:3) = coord(nodes, :)
         area = abs(det3x3(T)) / 2.0_dp
@@ -131,26 +84,24 @@ subroutine assemble(coord, topo, dt, H, P, q)
         
         qe = area / 3.0_dp
         
-        ! update the global matrices
-
+        
         ! Getting the index of the entry to be updated
         ! in the sparse matrix
         idx = get_idx(H, nodes)
-
         
-        !$omp critical
-
-        ! H(nodes, nodes) = H(nodes, nodes) + He
-        H%coef(idx) = H%coef(idx) + He_flat
-        
-        ! P(nodes, nodes) = P(nodes, nodes) + Pe
-        P%coef(idx) = P%coef(idx) + Pe_flat
-        
-        ! q(nodes) = q(nodes) + qe
-        q(nodes) = q(nodes) + qe
-
-        !$omp end critical
-        
+        ! update the global matrices
+        if (.not.frontier) then     ! concurrent update
+            H%coef(idx) = H%coef(idx) + He_flat  
+            P%coef(idx) = P%coef(idx) + Pe_flat
+            q(nodes) = q(nodes) + qe
+        else                        ! atomic update
+            !$omp critical
+            H%coef(idx) = H%coef(idx) + He_flat        
+            P%coef(idx) = P%coef(idx) + Pe_flat
+            q(nodes) = q(nodes) + qe
+            !$omp end critical
+        end if
+       
     end do
 
     !$omp end parallel
@@ -421,5 +372,30 @@ function get_idx(A, nodes) result(idx)
     end do
 
 end function
+
+
+subroutine get_regions(nodes, nnodes, nthreads, regions)
+    integer, intent(in)     :: nodes(3), nnodes
+    integer, intent(in)     :: nthreads
+    integer, intent(out)    :: regions(3)
+
+    integer                 :: i, d, wload, rem, s
+
+    wload = nnodes / nthreads
+    rem = modulo(nnodes, nthreads)
+    s = 0
+    if (rem.ne.0) s = 1
+
+    do i = 1, 3
+        d = (nodes(i) - 1) / (wload + s)
+        if (d.ge.rem) then
+            regions(i) = (nodes(i) - 1 - (wload + s) * rem) / wload + rem
+        else
+            regions(i) = d
+        end if
+    end do
+
+end subroutine
+
 
 end module fem
