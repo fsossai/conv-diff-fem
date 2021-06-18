@@ -3,6 +3,8 @@ use BLAS
 use class_precision
 use omp_lib
 
+include 'readers.h'
+
 real(dp), parameter                 :: flops_per_term = 2
 real(dp), parameter                 :: flops_per_row = 2
 integer                             :: nn, nt, iterations
@@ -15,10 +17,10 @@ read(*,'(a)') filename
 iterations = 10000
 
 ! reading matrix
-open(1, file=filename, status='old')
-read(1, *) nn, nt
-ierr = new_CSRMAT(nn, nt, A)
-call readmat(1, .false., A, ierr)
+call read_mat(filename, .false., A, ierr)
+
+nn = A%patt%nrows
+nt = A%patt%nterm
 
 ! allocation and initialization
 allocate(x(nn), y(nn), z(nn))
