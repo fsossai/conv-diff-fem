@@ -44,6 +44,12 @@ print('Number of boundary nodes:', len(bound))
 print('Boundary nodes:')
 print(bound)
 
-plt.scatter(x, y, s=1)
-plt.scatter(x[bound], y[bound], s=2)
+N = len(x)
+fractions = 16
+pen_size=0.05
+for i in range(fractions):
+    i_min = (N // fractions) * i
+    i_max = (N // fractions) * (i + 1)
+    plt.scatter(x[i_min:i_max], y[i_min:i_max], s=pen_size)
+plt.scatter(x[bound], y[bound], s=pen_size)
 plt.show()
