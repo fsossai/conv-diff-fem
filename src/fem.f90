@@ -15,7 +15,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
 
-    integer                             :: i, ne, nn, nthreads, tid
+    integer                             :: i, ne, nn, nthreads, tid, i_start, i_end
     integer                             :: nodes(3), idx(9), regions(3)
     real(dp), dimension(3,3)            :: T, C
     real(dp), target, dimension(3,3)    :: He, Pe
@@ -23,6 +23,9 @@ subroutine assemble(coord, topo, dt, H, P, q)
     real(dp)                            :: area, grad(2,3), diff(2,2), qe, &
                                            ones3x1(3,1), vel(1,2)
     logical                             :: frontier
+    real(dp), allocatable               :: local_H(:), local_P(:)
+    integer, allocatable                :: offset(:)
+    integer, pointer                    :: iat(:) => null()
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -38,15 +41,44 @@ subroutine assemble(coord, topo, dt, H, P, q)
     q = 0.0_dp
     
     !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt,nn) & 
-    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier)
+    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier,offset) &
+    !$omp& private(local_H,local_P,iat,i_start,i_end)
 
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
     
-    ! Flattening local matrices
+    ! Flattening local matrices, so that we will be able to update
+    ! the array 'coef' in a single assignment.
     He_flat(1:9) => He(:,:)
     Pe_flat(1:9) => Pe(:,:)
+
+    ! Calculating offsets.
+    ! offset(i) is the first internal node of the subdomain
+    ! associated to the i-th thread.
+    ! Additionally, offset(i+1) - offset(i) counts how many
+    ! nodes belongs to the subdomain of the i-th thread.
+    allocate(offset(0:nthreads))
+    offset(0) = 1
+    do i = 1, nthreads
+        offset(i) = offset(i - 1) + (nn / nthreads)
+        if (i.le.modulo(nn, nthreads)) then
+            offset(i) = offset(i) + 1
+        end if
+    end do
+    iat => H%patt%iat
+
+    ! local_H and local_P will serve as private partitions of the
+    ! global matrices, kept locally for performance reasons.
+    ! The total memory footprint will be twice the memory needed
+    ! to store the sparse matrices only.
+    ! These subdomains will contribute to the global matrices only
+    ! at the end.
+    allocate(local_H( iat(offset(tid + 1)) - iat(offset(tid)) ))
+    allocate(local_P( iat(offset(tid + 1)) - iat(offset(tid)) ))
+    local_H = 0.0_dp
+    local_P = 0.0_dp
     
+    ! For each element ...
     do i = 1, ne
         nodes = topo(i, :)
 
@@ -84,15 +116,15 @@ subroutine assemble(coord, topo, dt, H, P, q)
         
         qe = area / 3.0_dp
         
-        
         ! Getting the index of the entry to be updated
         ! in the sparse matrix
         idx = get_idx(H, nodes)
         
         ! update the global matrices
         if (.not.frontier) then     ! concurrent update
-            H%coef(idx) = H%coef(idx) + He_flat  
-            P%coef(idx) = P%coef(idx) + Pe_flat
+            idx = idx - iat(offset(tid)) + 1
+            local_H(idx) = local_H(idx) + He_flat
+            local_P(idx) = local_P(idx) + Pe_flat
             q(nodes) = q(nodes) + qe
         else                        ! atomic update
             !$omp critical
@@ -103,6 +135,17 @@ subroutine assemble(coord, topo, dt, H, P, q)
         end if
        
     end do
+
+    ! Final update of the local subdomain of the matrices into
+    ! the global ones.
+    !$omp critical
+    i_start = iat(offset(tid))
+    i_end = iat(offset(tid + 1)) - 1
+    H%coef(i_start:i_end) = H%coef(i_start:i_end) + local_H
+    P%coef(i_start:i_end) = P%coef(i_start:i_end) + local_P
+    !$omp end critical
+
+    deallocate(local_H, local_P, offset)
 
     !$omp end parallel
 
