@@ -43,12 +43,12 @@ subroutine axpby(z, alpha, x, beta, y)
         else
             beta_local = 1.0_dp
         end if
-        !!$omp parallel do
+        !$omp parallel do firstprivate(alpha,beta_local) shared(x,y,z)
         do i = 1,n
             z(i) = z(i) + alpha * x(i) + beta_local * y(i)
         end do
     else
-        !!$omp parallel do
+        !$omp parallel do firstprivate(alpha) shared(x,y,z)
         do i = 1,n
             z(i) = z(i) + alpha * x(i)
         end do
@@ -81,12 +81,12 @@ subroutine axpby_set(z, alpha, x, beta, y)
         else
             beta_local = 1.0_dp
         end if
-        !!$omp parallel do
+        !$omp parallel do firstprivate(alpha,beta_local) shared(x,y,z)
         do i = 1,n
             z(i) = alpha * x(i) + beta_local * y(i)
         end do
     else
-        !!$omp parallel do
+        !$omp parallel do firstprivate(alpha) shared(x,y,z)
         do i = 1,n
             z(i) = alpha * x(i)
         end do
@@ -129,7 +129,7 @@ subroutine amxpby(z, alpha, A, x, beta, y)
         else
             beta_local = 1.0_dp
         end if
-        !!$omp parallel do private(j,partial)
+        !$omp parallel do private(j,partial,c_start,c_end) firstprivate(alpha,beta_local) shared(iat,ja,coef,x,y,z)
         do i = 1,n
             c_start = iat(i)
             c_end = iat(i+1) - 1
@@ -137,10 +137,10 @@ subroutine amxpby(z, alpha, A, x, beta, y)
             do j = c_start,c_end
                 partial = partial + coef(j) * x(ja(j))
             end do
-            z(i) = alpha * partial + beta * y(i)
+            z(i) = alpha * partial + beta_local * y(i)
         end do
     else
-        !!$omp parallel do private(j,partial)
+        !$omp parallel do private(j,partial,c_start,c_end) firstprivate(alpha) shared(iat,ja,coef,x,y,z)
         do i = 1,n
             c_start = iat(i)
             c_end = iat(i+1) - 1
@@ -188,7 +188,7 @@ subroutine amxpby_set(z, alpha, A, x, beta, y)
         else
             beta_local = 1.0_dp
         end if
-        !!$omp parallel do private(j,partial,c_start,c_end)
+        !$omp parallel do private(j,partial,c_start,c_end) firstprivate(alpha,beta_local) shared(iat,ja,coef,x,y,z)
         do i = 1,n
             c_start = iat(i)
             c_end = iat(i+1) - 1
@@ -196,12 +196,11 @@ subroutine amxpby_set(z, alpha, A, x, beta, y)
             do j = c_start,c_end
                 partial = partial + coef(j) * x(ja(j))
             end do
-            z(i) = alpha * partial + beta * y(i)
+            z(i) = alpha * partial + beta_local * y(i)
         end do
     else
-        ! this loop is the bottleneck of the whole BiCGSTAB
         ! unrolled version
-        !!!$omp do private(j,partial,c_start,c_end)
+        !!$omp parallel do private(j,partial,alpha,c_start,c_end) shared(iat,ja,coef,x,y,z)
         !do i = 1,n
         !    c_start = iat(i)
         !    c_end = iat(i+1) - 1
@@ -218,7 +217,7 @@ subroutine amxpby_set(z, alpha, A, x, beta, y)
         !    end do
         !    z(i) = alpha * partial
         !end do
-        !$omp parallel do private(j,partial,c_start,c_end)
+        !$omp parallel do private(j,partial,c_start,c_end) firstprivate(alpha) shared(iat,ja,coef,x,y,z)
         do i = 1,n
             c_start = iat(i)
             c_end = iat(i+1) - 1
@@ -247,7 +246,7 @@ function inner_prod(x, y) result(z)
 
     ! computation
     z = 0.0_dp
-    !!$omp parallel do reduction(+:z)
+    !$omp parallel do reduction(+:z)
     do i = 1,n
         z = z + x(i) * y(i)
     end do
