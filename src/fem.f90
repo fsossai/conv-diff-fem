@@ -26,6 +26,10 @@ subroutine assemble(coord, topo, dt, H, P, q)
     real(dp), allocatable               :: local_H(:), local_P(:)
     integer, allocatable                :: offset(:)
     integer, pointer                    :: iat(:) => null()
+    !!!
+    integer, allocatable                :: pc(:)
+    integer                             :: inter
+    !!!
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -35,14 +39,16 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     ne = size(topo, 1)          ! Number of elements
     nn = size(coord, 1)         ! Number of nodes
+    allocate(pc(ne))
+    pc = 0
 
     if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
     q = 0.0_dp
     
-    !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt,nn) & 
+    !$omp parallel shared(H,P,q,ne,coord,topo,pc) firstprivate(diff,vel,ones3x1,dt,nn) & 
     !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier,offset) &
-    !$omp& private(local_H,local_P,iat,i_start,i_end)
+    !$omp& private(local_H,local_P,iat,i_start,i_end,inter)
 
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
@@ -78,7 +84,9 @@ subroutine assemble(coord, topo, dt, H, P, q)
     local_H = 0.0_dp
     local_P = 0.0_dp
     
+    inter = 0
     ! For each element ...
+    !$omp do
     do i = 1, ne
         nodes = topo(i, :)
 
@@ -91,13 +99,13 @@ subroutine assemble(coord, topo, dt, H, P, q)
         ! has to be processed anyway.
         if (any(regions.ne.tid)) then
             ! The current element is external.
-            ! The following condition is totally arbitrary.
-            if (minval(regions).eq.tid) then
-                frontier = .true.   ! A critical section is needed
-            else
-                cycle               ! Skip this element
-            end if
+            frontier = .true.   ! A critical section is needed
+        else
+            inter = inter + 1
         end if
+
+        !$omp atomic
+        pc(i) = pc(i) + 1
 
         T = 1.0_dp
         T(:, 2:3) = coord(nodes, :)
@@ -147,7 +155,18 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     deallocate(local_H, local_P, offset)
 
+    print *, omp_get_thread_num(), dble(inter) / ne
+
     !$omp end parallel
+
+    !!!
+    if (any(pc.ne.1)) then
+        print '(a,f8.3)', 'FAIL', count(pc.eq.1) / dble(size(pc)) * 100.0_dp
+    else
+        print '(a,f8.3)', 'SUCCESS', count(pc.eq.1) / dble(size(pc)) * 100.0_dp
+    end if
+    deallocate(pc)
+    !!!
 
 end subroutine
 
