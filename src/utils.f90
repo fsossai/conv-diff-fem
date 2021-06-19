@@ -230,4 +230,31 @@ recursive subroutine quicksort(a, first, last)
     if (j + 1 < last)  call quicksort(a, j + 1, last)
 end subroutine quicksort
 
+
+recursive subroutine paired_quicksort_abs(a, b, first, last)
+    implicit none
+    integer, intent(inout)  :: a(:), b(:)
+    integer                 :: first, last
+    integer                 :: i, j, x, t
+    
+    x = abs(a( (first + last) / 2 ))
+    i = first
+    j = last
+    do
+        do while (abs(a(i)) < x)
+            i = i + 1
+        end do
+        do while (x < abs(a(j)))
+            j = j - 1
+        end do
+        if (i >= j) exit
+        t = a(i);  a(i) = a(j);  a(j) = t
+        t = b(i);  b(i) = b(j);  b(j) = t
+        i = i + 1
+        j = j - 1
+    end do
+    if (first < i - 1) call paired_quicksort_abs(a, b, first, i - 1)
+    if (j + 1 < last)  call paired_quicksort_abs(a, b, j + 1, last)
+end subroutine paired_quicksort_abs
+
 end module utils
