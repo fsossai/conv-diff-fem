@@ -15,7 +15,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
 
-    integer                             :: i, ne, nn, nthreads, tid, i_start, i_end
+    integer                             :: i, ne, nn, nthreads, tid, i_start, i_end, tmp
     integer                             :: nodes(3), idx(9), regions(3)
     real(dp), dimension(3,3)            :: T, C
     real(dp), target, dimension(3,3)    :: He, Pe
@@ -26,7 +26,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     real(dp), allocatable               :: local_H(:), local_P(:)
     integer, allocatable                :: offset(:)
     integer, pointer                    :: iat(:) => null()
-    integer, allocatable                :: duty_of(:)
+    integer, allocatable                :: duty_of(:), el_idx(:), workload(:)
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -36,18 +36,26 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     ne = size(topo, 1)          ! Number of elements
     nn = size(coord, 1)         ! Number of nodes
-    allocate(duty_of(ne))
+    allocate(duty_of(ne), el_idx(ne))
 
     if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
-    q = 0.0_dp
+    !$omp parallel shared(H,P,q,ne,coord,topo,duty_of,workload,el_idx) &
+    !$omp& firstprivate(diff,vel,ones3x1,dt,nn) & 
+    !$omp& private(i,nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid) &
+    !$omp& private(offset,frontier,local_H,local_P,iat,i_start,i_end,tmp)
     
-    !$omp parallel shared(H,P,q,ne,coord,topo,duty_of) firstprivate(diff,vel,ones3x1,dt,nn) & 
-    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid) &
-    !$omp& private(offset,frontier,local_H,local_P,iat,i_start,i_end)
+    !$omp workshare
+    q = 0.0_dp
+    !$omp end workshare
 
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
+
+    !$omp single
+    allocate(workload(0:nthreads))
+    workload = 0
+    !$omp end single
 
     ! Calculating, given an element, which is the thread that will
     ! take care of the computation.
@@ -65,7 +73,21 @@ subroutine assemble(coord, topo, dt, H, P, q)
             ! Here, the minus sign indicated the need for a critical section
             duty_of(i) = - (minval(regions) + 1)
         end if
+
+        tmp = abs(duty_of(i))
+
+        !$omp atomic
+        workload(tmp) = workload(tmp) + 1
+        !$omp end atomic
     end do
+    
+    !$omp workshare
+    el_idx = [(i, i = 1, ne)]
+    !$omp end workshare
+
+    !$omp single
+    call paired_quicksort_abs(duty_of, el_idx, 1, ne)
+    !$omp end single
     
     ! Flattening local matrices, so that we will be able to update
     ! the array 'coef' in a single assignment.
@@ -95,22 +117,19 @@ subroutine assemble(coord, topo, dt, H, P, q)
     ! at the end.
     allocate(local_H( iat(offset(tid + 1)) - iat(offset(tid)) ))
     allocate(local_P( iat(offset(tid + 1)) - iat(offset(tid)) ))
+    !$omp workshare
     local_H = 0.0_dp
     local_P = 0.0_dp
+    !$omp end workshare
     
-    ! For each element ...
-    !$omp do
-    do i = 1, ne
-        ! Does the current thread have to do the computation?
-        if (abs(duty_of(i)).eq.(tid + 1)) then
-            ! Yes. Let's check whether a critical section is needed.
-            frontier = duty_of(i).lt.0
-        else
-            ! No. Skip element.
-            cycle
-        end if
-        
-        nodes = topo(i, :)
+    ! Computing bounds 
+    i_start = 1 + sum(workload(0:tid))
+    i_end = i_start + workload(tid + 1) - 1
+
+    ! Every element is processed by exactly one thread
+    do i = i_start, i_end
+        ! el_idx(i) is the index of the current element    
+        nodes = topo(el_idx(i), :)
 
         ! Getting which thread every node of 'nodes' belogs to
         call get_regions(nodes, nn, nthreads, regions)
@@ -137,7 +156,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
         idx = get_idx(H, nodes)
         
         ! update the global matrices
-        if (.not.frontier) then     ! concurrent update
+        if (duty_of(i).gt.0) then   ! concurrent update
             idx = idx - iat(offset(tid)) + 1
             local_H(idx) = local_H(idx) + He_flat
             local_P(idx) = local_P(idx) + Pe_flat
@@ -165,7 +184,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     !$omp end parallel
 
-    deallocate(duty_of)
+    deallocate(duty_of, el_idx, workload)
 
 end subroutine
 
