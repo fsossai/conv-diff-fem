@@ -43,8 +43,8 @@ subroutine assemble(coord, topo, dt, H, P, q)
     q = 0.0_dp
     
     !$omp parallel shared(H,P,q,ne,coord,topo,duty_of) firstprivate(diff,vel,ones3x1,dt,nn) & 
-    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier,offset) &
-    !$omp& private(local_H,local_P,iat,i_start,i_end)
+    !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid)
+    !$omp& private(offset,frontier,local_H,local_P,iat,i_start,i_end)
 
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
@@ -98,7 +98,9 @@ subroutine assemble(coord, topo, dt, H, P, q)
     local_H = 0.0_dp
     local_P = 0.0_dp
     
+    inter = 0
     ! For each element ...
+    !$omp do
     do i = 1, ne
         ! Does the current thread have to do the computation?
         if (abs(duty_of(i)).eq.(tid + 1)) then
@@ -161,6 +163,8 @@ subroutine assemble(coord, topo, dt, H, P, q)
     !$omp end critical
 
     deallocate(local_H, local_P, offset)
+
+    print *, omp_get_thread_num(), dble(inter) / ne
 
     !$omp end parallel
 
