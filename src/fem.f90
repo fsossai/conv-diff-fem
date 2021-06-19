@@ -26,6 +26,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     real(dp), allocatable               :: local_H(:), local_P(:)
     integer, allocatable                :: offset(:)
     integer, pointer                    :: iat(:) => null()
+    integer, allocatable                :: duty_of(:)
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -35,17 +36,36 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     ne = size(topo, 1)          ! Number of elements
     nn = size(coord, 1)         ! Number of nodes
+    allocate(duty_of(ne))
 
     if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
     q = 0.0_dp
     
-    !$omp parallel shared(H,P,q,ne,coord,topo) firstprivate(diff,vel,ones3x1,dt,nn) & 
+    !$omp parallel shared(H,P,q,ne,coord,topo,duty_of) firstprivate(diff,vel,ones3x1,dt,nn) & 
     !$omp& private(nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid,frontier,offset) &
     !$omp& private(local_H,local_P,iat,i_start,i_end)
 
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
+
+    ! Calculating, given an element, which is the thread that will
+    ! take care of the computation.
+    !$omp do
+    do i = 1, ne
+        nodes = topo(i, :)
+
+        ! Getting which thread every node of 'nodes' belongs to
+        call get_regions(nodes, nn, nthreads, regions)
+        
+        if (regions(1).eq.regions(2).and.regions(2).eq.regions(3)) then
+            ! Element i will be computed by thread 'regions(1)'
+            duty_of(i) = regions(1) + 1
+        else
+            ! Here, the minus sign indicated the need for a critical section
+            duty_of(i) = - (minval(regions) + 1)
+        end if
+    end do
     
     ! Flattening local matrices, so that we will be able to update
     ! the array 'coef' in a single assignment.
@@ -80,25 +100,20 @@ subroutine assemble(coord, topo, dt, H, P, q)
     
     ! For each element ...
     do i = 1, ne
+        ! Does the current thread have to do the computation?
+        if (abs(duty_of(i)).eq.(tid + 1)) then
+            ! Yes. Let's check whether a critical section is needed.
+            frontier = duty_of(i).lt.0
+        else
+            ! No. Skip element.
+            cycle
+        end if
+        
         nodes = topo(i, :)
 
         ! Getting which thread every node of 'nodes' belogs to
         call get_regions(nodes, nn, nthreads, regions)
         
-        frontier = .false.  ! Suppose that we don't need a critical section
-        ! Checking whether the element is external,
-        ! in that case we have to decide if the element
-        ! has to be processed anyway.
-        if (any(regions.ne.tid)) then
-            ! The current element is external.
-            ! The following condition is totally arbitrary.
-            if (minval(regions).eq.tid) then
-                frontier = .true.   ! A critical section is needed
-            else
-                cycle               ! Skip this element
-            end if
-        end if
-
         T = 1.0_dp
         T(:, 2:3) = coord(nodes, :)
         area = abs(det3x3(T)) / 2.0_dp
@@ -148,6 +163,8 @@ subroutine assemble(coord, topo, dt, H, P, q)
     deallocate(local_H, local_P, offset)
 
     !$omp end parallel
+
+    deallocate(duty_of)
 
 end subroutine
 
