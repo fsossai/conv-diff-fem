@@ -157,7 +157,7 @@ subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el
 
     if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
-    !$omp parallel shared(topo,duty_of,workload,el_idx,nn,i_start_of,i_end_of,offset) &
+    !$omp parallel shared(topo,duty_of,workload,el_idx,nn,i_start_of,i_end_of,offset,ne) &
     !$omp& private(i,nodes,regions,nthreads,tid,tmp)
 
     nthreads = omp_get_num_threads()
@@ -193,9 +193,13 @@ subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el
         !$omp end atomic
     end do
     
-    !$omp workshare
-    el_idx = [(i, i = 1, ne)]
-    !$omp end workshare
+    ! This is equivalent to 
+    ! el_idx = [(i, i=1, ne)]
+    ! but when using -Ofast optimization causes a SIGSEGV, so we stick to the following
+    !$omp do
+    do i = 1, ne
+        el_idx(i) = i
+    end do
 
     !$omp single
     call paired_quicksort_abs(duty_of, el_idx, 1, ne)
@@ -346,9 +350,10 @@ subroutine solve(coord, topo, x0, x)
     real(dp), intent(in)    :: x0(:)
     real(dp), intent(out)   :: x(:)
 
-    integer, parameter      :: max_it = 100
-    integer, parameter      :: bicgstab_max_it = 200
+    integer, parameter      :: max_it = 2
+    integer, parameter      :: bicgstab_max_it = 100
     real(dp), parameter     :: boundary_cond = 5.0_dp
+    logical, parameter      :: use_preconditioning = .true.
     type(CSRMAT)            :: H, P
     real(dp), allocatable   :: q(:), rhs(:), diag(:)
     integer, allocatable    :: bnodes(:)
@@ -370,10 +375,6 @@ subroutine solve(coord, topo, x0, x)
     call create_pattern(nnodes, topo, H)
     call copy_Pattern(P, H)
 
-    ! Setting up the the matrix and the RHS of the linear system
-    call get_diag(H, diag)
-    call jacobi_precond_mat(H)
-
     x = x0
 
     do i = 1, max_it
@@ -382,17 +383,25 @@ subroutine solve(coord, topo, x0, x)
         call assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty_of, el_idx)
 
         ! Setting up the the matrix and the RHS of the linear system
-        call get_diag(H, diag)
-        call jacobi_precond_mat(H)
+        if (use_preconditioning) then
+            call get_diag(H, diag)
+            call jacobi_precond_mat(H)
+        end if
 
-        ! imposing the Dirichlet boundary conditions
+        ! Imposing the Dirichlet boundary conditions
         x(bnodes) = boundary_cond
 
-        ! solving the linear system
+        ! Setting up the right-hand side array
         call amxpby_set(rhs, 1.0_dp / dt, P, x, 1.0_dp, q)
-
-        ! preconditioning 
-        rhs = rhs / diag
+        
+        ! Preconditioning the RHS
+        if (use_preconditioning) then
+            !$omp parallel workshare
+            rhs = rhs / diag
+            !$omp end parallel workshare
+        end if
+        
+        ! Solving the linear system
         call bicgstab(H, rhs, x, 1e-5_dp, bicgstab_max_it)
     end do
 

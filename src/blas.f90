@@ -359,6 +359,7 @@ subroutine get_diag(A, v)
 
     n = A%patt%nrows
 
+    !$omp parallel do shared(iat,ja,coef,v) private(i,j)
     do i = 1, n
         ! finding the diagonal element
         do j = iat(i), iat(i+1) - 1
