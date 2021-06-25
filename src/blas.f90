@@ -304,10 +304,11 @@ subroutine inv3x3(A, A_inv)
     A_inv = transpose(cofactor) / det        
 end subroutine inv3x3
 
+
 subroutine jacobi_precond_mat(A)
     ! Divide rows by the diagonal element
 
-    type(CSRMAT), intent(inout)         :: A
+    type(CSRMAT), intent(inout)     :: A
 
     real(dp), pointer               :: coef(:)
     integer, pointer, dimension(:)  :: iat, ja
@@ -319,9 +320,10 @@ subroutine jacobi_precond_mat(A)
     iat => A%patt%iat
     ja => A%patt%ja
 
-    pivot = 1.0_dp
+    pivot = 1.0_dp  ! Only to suppress -Wmaybe-uninitialized
     n = A%patt%nrows
 
+    !$omp parallel do shared(iat,ja,coef) private(i,j) firstprivate(pivot)
     do i = 1, n
         ! finding pivot, a.k.a. the diagonal element
         do j = iat(i), iat(i+1) - 1
@@ -340,6 +342,7 @@ subroutine jacobi_precond_mat(A)
         end do
     end do
 end subroutine
+
 
 subroutine get_diag(A, v)
     type(CSRMAT), intent(in)        :: A

@@ -14,7 +14,7 @@ subroutine assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty
     real(dp), intent(in)                :: dt
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
-    integer, intent(in), dimension(:)   :: i_start_of, i_end_of, offset, duty_of, el_idx
+    integer, intent(in), pointer, dimension(:) :: i_start_of, i_end_of, offset, duty_of, el_idx
 
     integer                             :: i, ne, nn, nthreads, tid, i_start, i_end
     integer                             :: nodes(3), idx(9), regions(3)
@@ -80,6 +80,9 @@ subroutine assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty
     ! Computing bounds 
     i_start = i_start_of(tid)
     i_end = i_end_of(tid)
+    !!!
+    print *, omp_get_thread_num(), i_start, i_end
+    !!!
 
     ! Every element is processed by exactly one thread
     do i = i_start, i_end
@@ -146,8 +149,8 @@ end subroutine
 subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el_idx)
     integer, intent(in)                 :: topo(:,:)
     integer, intent(in)                 :: nn
-    integer, intent(out), allocatable   :: i_start_of(:), i_end_of(:), offset(:)
-    integer, intent(out), dimension(:)  :: duty_of, el_idx
+    integer, intent(out), pointer       :: i_start_of(:), i_end_of(:), offset(:), &
+                                           duty_of(:), el_idx(:)
 
     integer                             :: i, ne, nthreads, tid, tmp
     integer                             :: nodes(3), regions(3)
@@ -165,7 +168,7 @@ subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el
 
     !$omp single
     allocate(workload(0:nthreads), i_start_of(0:nthreads-1), i_end_of(0:nthreads-1))
-    allocate(offset(0:nthreads))
+    allocate(offset(0:nthreads), duty_of(ne), el_idx(ne))
     workload = 0
     !$omp end single
 
@@ -221,6 +224,11 @@ subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el
     !$omp end parallel
 
     deallocate(workload)
+
+    !!!
+    print *, 'CompW S', i_start_of
+    print *, 'CompW E', i_end_of
+    !!!
     
 end subroutine
 
@@ -351,7 +359,8 @@ subroutine solve(coord, topo, x0, x)
     real(dp), parameter     :: boundary_cond = 5.0_dp
     type(CSRMAT)            :: H, P
     real(dp), allocatable   :: q(:), rhs(:), diag(:)
-    integer, allocatable    :: bnodes(:), i_start_of(:), i_end_of(:), &
+    integer, allocatable    :: bnodes(:)
+    integer, pointer        :: i_start_of(:), i_end_of(:), &
                                offset(:), duty_of(:), el_idx(:)
     integer                 :: nnodes, nelem, i, ierr
     real(dp)                :: dt = 0.01
@@ -361,7 +370,7 @@ subroutine solve(coord, topo, x0, x)
     nnodes = size(coord, 1)
     nelem = size(topo, 1)
 
-    allocate(q(nnodes), rhs(nnodes), diag(nnodes))
+    allocate(q(nnodes), rhs(nnodes), diag(nnodes), duty_of(nelem), el_idx(nelem))
 
     call compute_workloads(topo, nnodes, i_start_of, i_end_of, offset, duty_of, el_idx)
     

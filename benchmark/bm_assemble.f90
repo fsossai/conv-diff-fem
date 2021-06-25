@@ -2,7 +2,7 @@ program main
 use class_precision
 use class_CSRMAT
 use omp_lib
-use fem, only: assemble, create_pattern
+use fem, only: assemble, create_pattern, compute_workloads
 use utils, only: write_CSRMAT
 
 include 'readers.h'
@@ -16,7 +16,7 @@ real(dp), allocatable   :: q(:)
 integer                 :: nnodes, nelem, ierr, it, i
 integer, parameter      :: max_it = 1
 character(100)          :: arg_coord, arg_topo
-integer, allocatable    :: i_start_of(:), i_end_of(:), offset(:), duty_of(:), el_idx(:)
+integer, pointer        :: i_start_of(:), i_end_of(:), offset(:), duty_of(:), el_idx(:)
 
 
 ! Checking input arguments
@@ -45,6 +45,7 @@ print '(a25,i15)', 'Number of iterations:', max_it
 
 call create_pattern(nnodes, topo, H)
 call copy_Pattern(P, H)
+call compute_workloads(topo, nnodes, i_start_of, i_end_of, offset, duty_of, el_idx)
 
 ! Assembling the system matrix
 timer = 0.0_dp
@@ -65,7 +66,7 @@ print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
 ! Writing to file
 print '(a)', 'Exporting matrix to file...'
-!call write_CSRMAT('mat.txt', H)
+call write_CSRMAT('mat.txt', H)
 
 ! Showing the first row
 print *, 'First row:'
