@@ -14,8 +14,9 @@ real(dp), parameter     :: boundary_cond = 5.0_dp, dt = 0.001_dp
 type(CSRMAT)            :: H, P
 real(dp), allocatable   :: q(:)
 integer                 :: nnodes, nelem, ierr, it, i
-integer, parameter      :: max_it = 10
+integer, parameter      :: max_it = 1
 character(100)          :: arg_coord, arg_topo
+integer, allocatable    :: i_start_of(:), i_end_of(:), offset(:), duty_of(:), el_idx(:)
 
 
 ! Checking input arguments
@@ -55,7 +56,7 @@ do it = 1, max_it
     
     ! Assembly
     delta = omp_get_wtime()
-    call assemble(coord, topo, dt, H, P, q)
+    call assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty_of, el_idx)
     timer = timer + omp_get_wtime() - delta
 end do
 
@@ -63,7 +64,7 @@ end do
 print '(a25,en15.3)', 'Elapsed time [s]:',  timer
 
 ! Writing to file
-!print '(a)', 'Exporting matrix to file...'
+print '(a)', 'Exporting matrix to file...'
 !call write_CSRMAT('mat.txt', H)
 
 ! Showing the first row
@@ -75,6 +76,6 @@ ierr = 0
 ierr = ierr + dlt_CSRMAT(H)
 ierr = ierr + dlt_CSRMAT(P)
 if (ierr.ne.0) stop 'ERROR: failed to delete one or more CSRMAT.'
-deallocate(q)
+deallocate(q, i_start_of, i_end_of, offset, duty_of, el_idx)
 
 end program

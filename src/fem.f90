@@ -8,14 +8,15 @@ module fem
 contains
 
 
-subroutine assemble(coord, topo, dt, H, P, q)
+subroutine assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty_of, el_idx)
     real(dp), intent(in)                :: coord(:,:)
     integer, intent(in)                 :: topo(:,:)
     real(dp), intent(in)                :: dt
     type(CSRMAT), intent(inout)         :: H, P
     real(dp), intent(out)               :: q(:)
+    integer, intent(in), dimension(:)   :: i_start_of, i_end_of, offset, duty_of, el_idx
 
-    integer                             :: i, ne, nn, nthreads, tid, i_start, i_end, tmp
+    integer                             :: i, ne, nn, nthreads, tid, i_start, i_end
     integer                             :: nodes(3), idx(9), regions(3)
     real(dp), dimension(3,3)            :: T, C
     real(dp), target, dimension(3,3)    :: He, Pe
@@ -24,9 +25,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
                                            ones3x1(3,1), vel(1,2), time
     logical                             :: frontier
     real(dp), allocatable               :: local_H(:), local_P(:)
-    integer, allocatable                :: offset(:)
     integer, pointer                    :: iat(:) => null()
-    integer, allocatable                :: duty_of(:), el_idx(:), workload(:)
 
     diff = 0.0_dp               ! Diffusivity coefficients
     diff(1,1) = 1.0_dp
@@ -36,14 +35,13 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     ne = size(topo, 1)          ! Number of elements
     nn = size(coord, 1)         ! Number of nodes
-    allocate(duty_of(ne), el_idx(ne))
 
     if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
 
-    !$omp parallel shared(H,P,q,ne,coord,topo,duty_of,workload,el_idx) &
+    !$omp parallel shared(H,P,q,ne,coord,topo,duty_of,el_idx,i_start_of,i_end_of,offset) &
     !$omp& firstprivate(diff,vel,ones3x1,dt,nn) & 
     !$omp& private(i,nodes,T,C,area,grad,He,Pe,qe,He_flat,Pe_flat,idx,regions,nthreads,tid) &
-    !$omp& private(offset,frontier,local_H,local_P,iat,i_start,i_end,tmp)
+    !$omp& private(frontier,local_H,local_P,iat,i_start,i_end)
     
     !$omp workshare
     q = 0.0_dp
@@ -52,62 +50,14 @@ subroutine assemble(coord, topo, dt, H, P, q)
     nthreads = omp_get_num_threads()
     tid = omp_get_thread_num()
 
-    !$omp single
-    allocate(workload(0:nthreads))
-    workload = 0
-    !$omp end single
+    if (size(i_start_of).ne.nthreads) then
+        stop 'ERROR: unexpected number of threads'
+    end if
 
-    ! Calculating, given an element, which is the thread that will
-    ! take care of the computation.
-    !$omp do
-    do i = 1, ne
-        nodes = topo(i, :)
-
-        ! Getting which thread every node of 'nodes' belongs to
-        call get_regions(nodes, nn, nthreads, regions)
-        
-        if (regions(1).eq.regions(2).and.regions(2).eq.regions(3)) then
-            ! Element i will be computed by thread 'regions(1)'
-            duty_of(i) = regions(1) + 1
-        else
-            ! Here, the minus sign indicated the need for a critical section
-            duty_of(i) = - (minval(regions) + 1)
-        end if
-
-        tmp = abs(duty_of(i))
-
-        !$omp atomic
-        workload(tmp) = workload(tmp) + 1
-        !$omp end atomic
-    end do
-    
-    !$omp workshare
-    el_idx = [(i, i = 1, ne)]
-    !$omp end workshare
-
-    !$omp single
-    call paired_quicksort_abs(duty_of, el_idx, 1, ne)
-    !$omp end single
-    
     ! Flattening local matrices, so that we will be able to update
     ! the array 'coef' in a single assignment.
     He_flat(1:9) => He(:,:)
     Pe_flat(1:9) => Pe(:,:)
-
-    ! Calculating offsets.
-    ! offset(i) is the first internal node of the subdomain
-    ! associated to the i-th thread.
-    ! Additionally, offset(i+1) - offset(i) counts how many
-    ! nodes belongs to the subdomain of the i-th thread.
-    allocate(offset(0:nthreads))
-    offset(0) = 1
-    do i = 1, nthreads
-        offset(i) = offset(i - 1) + (nn / nthreads)
-        if (i.le.modulo(nn, nthreads)) then
-            offset(i) = offset(i) + 1
-        end if
-    end do
-    iat => H%patt%iat
 
     ! local_H and local_P will serve as private partitions of the
     ! global matrices, kept locally for performance reasons.
@@ -115,6 +65,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     ! to store the sparse matrices only.
     ! These subdomains will contribute to the global matrices only
     ! at the end.
+    iat => H%patt%iat
     allocate(local_H( iat(offset(tid + 1)) - iat(offset(tid)) ))
     allocate(local_P( iat(offset(tid + 1)) - iat(offset(tid)) ))
     !$omp workshare
@@ -127,16 +78,13 @@ subroutine assemble(coord, topo, dt, H, P, q)
     !$omp end single
     
     ! Computing bounds 
-    i_start = 1 + sum(workload(0:tid))
-    i_end = i_start + workload(tid + 1) - 1
+    i_start = i_start_of(tid)
+    i_end = i_end_of(tid)
 
     ! Every element is processed by exactly one thread
     do i = i_start, i_end
         ! el_idx(i) is the index of the current element    
         nodes = topo(el_idx(i), :)
-
-        ! Getting which thread every node of 'nodes' belogs to
-        call get_regions(nodes, nn, nthreads, regions)
         
         T = 1.0_dp
         T(:, 2:3) = coord(nodes, :)
@@ -184,16 +132,96 @@ subroutine assemble(coord, topo, dt, H, P, q)
     P%coef(i_start:i_end) = P%coef(i_start:i_end) + local_P
     !$omp end critical
 
-    deallocate(local_H, local_P, offset)
+    deallocate(local_H, local_P)
 
     !$omp end parallel
 
     time = omp_get_wtime() - time
 
-    deallocate(duty_of, el_idx, workload)
-
     print '(a25,en20.3)', 'Elements proc time [s]:', time
 
+end subroutine
+
+
+subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el_idx)
+    integer, intent(in)                 :: topo(:,:)
+    integer, intent(in)                 :: nn
+    integer, intent(out), allocatable   :: i_start_of(:), i_end_of(:), offset(:)
+    integer, intent(out), dimension(:)  :: duty_of, el_idx
+
+    integer                             :: i, ne, nthreads, tid, tmp
+    integer                             :: nodes(3), regions(3)
+    integer, allocatable                :: workload(:)
+
+    ne = size(topo, 1)          ! Number of elements
+
+    if (size(topo, 2).ne.3) stop 'ERROR: elements are not triangles.'
+
+    !$omp parallel shared(topo,duty_of,workload,el_idx,nn,i_start_of,i_end_of,offset) &
+    !$omp& private(i,nodes,regions,nthreads,tid,tmp)
+
+    nthreads = omp_get_num_threads()
+    tid = omp_get_thread_num()
+
+    !$omp single
+    allocate(workload(0:nthreads), i_start_of(0:nthreads-1), i_end_of(0:nthreads-1))
+    allocate(offset(0:nthreads))
+    workload = 0
+    !$omp end single
+
+    ! Calculating, given an element, which is the thread that will
+    ! take care of the computation.
+    !$omp do
+    do i = 1, ne
+        nodes = topo(i, :)
+
+        ! Getting which thread every node of 'nodes' belongs to
+        call get_regions(nodes, nn, nthreads, regions)
+        
+        if (regions(1).eq.regions(2).and.regions(2).eq.regions(3)) then
+            ! Element i will be computed by thread 'regions(1)'
+            duty_of(i) = regions(1) + 1
+        else
+            ! Here, the minus sign indicated the need for a critical section
+            duty_of(i) = - (minval(regions) + 1)
+        end if
+
+        tmp = abs(duty_of(i))
+
+        !$omp atomic
+        workload(tmp) = workload(tmp) + 1
+        !$omp end atomic
+    end do
+    
+    !$omp workshare
+    el_idx = [(i, i = 1, ne)]
+    !$omp end workshare
+
+    !$omp single
+    call paired_quicksort_abs(duty_of, el_idx, 1, ne)
+    
+    ! Calculating offsets.
+    ! offset(i) is the first internal node of the subdomain
+    ! associated to the i-th thread.
+    ! Additionally, offset(i+1) - offset(i) counts how many
+    ! nodes belongs to the subdomain of the i-th thread.
+    offset(0) = 1
+    do i = 1, nthreads
+        offset(i) = offset(i - 1) + (nn / nthreads)
+        if (i.le.modulo(nn, nthreads)) then
+            offset(i) = offset(i) + 1
+        end if
+    end do
+    !$omp end single
+
+    ! Computing bounds
+    i_start_of(tid) = 1 + sum(workload(0:tid))
+    i_end_of(tid) = i_start_of(tid) + workload(tid + 1) - 1
+
+    !$omp end parallel
+
+    deallocate(workload)
+    
 end subroutine
 
 
@@ -323,7 +351,8 @@ subroutine solve(coord, topo, x0, x)
     real(dp), parameter     :: boundary_cond = 5.0_dp
     type(CSRMAT)            :: H, P
     real(dp), allocatable   :: q(:), rhs(:), diag(:)
-    integer, allocatable    :: bnodes(:)
+    integer, allocatable    :: bnodes(:), i_start_of(:), i_end_of(:), &
+                               offset(:), duty_of(:), el_idx(:)
     integer                 :: nnodes, nelem, i, ierr
     real(dp)                :: dt = 0.01
 
@@ -333,11 +362,12 @@ subroutine solve(coord, topo, x0, x)
     nelem = size(topo, 1)
 
     allocate(q(nnodes), rhs(nnodes), diag(nnodes))
+
+    call compute_workloads(topo, nnodes, i_start_of, i_end_of, offset, duty_of, el_idx)
     
     call get_boundaries(coord, 1e-5_dp, bnodes)
     call create_pattern(nnodes, topo, H)
     call copy_Pattern(P, H)
-    call assemble(coord, topo, dt, H, P, q)
 
     ! Setting up the the matrix and the RHS of the linear system
     call get_diag(H, diag)
@@ -348,7 +378,7 @@ subroutine solve(coord, topo, x0, x)
     do i = 1, max_it
         print *, 'Iteration:', i
 
-        call assemble(coord, topo, dt, H, P, q)
+        call assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty_of, el_idx)
 
         ! Setting up the the matrix and the RHS of the linear system
         call get_diag(H, diag)
@@ -370,7 +400,7 @@ subroutine solve(coord, topo, x0, x)
     ierr = ierr + dlt_CSRMAT(P)
     if (ierr .ne. 0) stop 'ERROR: failed to delete one or more CSRMAT in "solve".'
     
-    deallocate(q, rhs, diag)
+    deallocate(q, rhs, diag, i_start_of, i_end_of, offset, duty_of, el_idx)
 
 end subroutine
 
