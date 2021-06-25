@@ -9,7 +9,7 @@ echo "Coordinate file: ${coord_file}"
 echo "Topology file:   ${topo_file}"
 
 fp=[0-9]+\.[0-9]+[Ee][+-][0-9]+ # floating point in scientific notation
-logfile=bm_${program}_$(date +%s).tsv
+logfile=bm_solver_$(date +%s).tsv
 
 for i in {1..8}; do
     export OMP_NUM_THREADS=$i
