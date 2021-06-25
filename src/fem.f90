@@ -80,9 +80,6 @@ subroutine assemble(coord, topo, dt, H, P, q, i_start_of, i_end_of, offset, duty
     ! Computing bounds 
     i_start = i_start_of(tid)
     i_end = i_end_of(tid)
-    !!!
-    print *, omp_get_thread_num(), i_start, i_end
-    !!!
 
     ! Every element is processed by exactly one thread
     do i = i_start, i_end
@@ -225,11 +222,6 @@ subroutine compute_workloads(topo, nn, i_start_of, i_end_of, offset, duty_of, el
 
     deallocate(workload)
 
-    !!!
-    print *, 'CompW S', i_start_of
-    print *, 'CompW E', i_end_of
-    !!!
-    
 end subroutine
 
 
