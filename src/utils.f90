@@ -120,8 +120,8 @@ end subroutine
 
 
 subroutine sort2(x)
-    integer, intent(inout) :: x(2)
-    integer :: temp
+    integer, intent(inout)  :: x(2)
+    integer                 :: temp
 
     if (x(1) .gt. x(2)) then
         temp = x(1)
@@ -142,7 +142,7 @@ end subroutine
 
 function index_of_first(x, val) result(index)
     integer, intent(in) :: x(:), val
-    integer :: i, n, index
+    integer             :: i, n, index
     n = size(x, 1)
 
     do i = 1, n
@@ -207,9 +207,9 @@ end subroutine
 
 recursive subroutine quicksort(a, first, last)
     implicit none
-    integer, intent(inout) :: a(:)
-    integer :: first, last
-    integer :: i, j, x, t
+    integer, intent(inout)  :: a(:)
+    integer                 :: first, last
+    integer                 :: i, j, x, t
 
     x = a( (first + last) / 2 )
     i = first
