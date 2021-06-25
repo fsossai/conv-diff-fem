@@ -9,24 +9,27 @@ module BLAS
 contains
 
 subroutine reset(x)
-    real(dp), intent(out) :: x(:)
-    integer :: i,n
+    real(dp), intent(out)   :: x(:)
+    
+    integer                 :: i, n
+
     n = size(x)
-    !!$omp parallel do
-    do i = 1,n
+    !$omp parallel do
+    do i = 1, n
         x(i) = 0.0_dp
     end do
 end subroutine
 
 
 subroutine axpby(z, alpha, x, beta, y)
-    real(dp), intent(inout) :: z(:)
-    real(dp), intent(in) :: alpha
-    real(dp), intent(in) :: x(:)
-    real(dp), optional, intent(in) :: beta
-    real(dp), optional, intent(in) :: y(:)
-    real(dp) :: beta_local
-    integer :: i,n
+    real(dp), intent(inout)         :: z(:)
+    real(dp), intent(in)            :: alpha
+    real(dp), intent(in)            :: x(:)
+    real(dp), optional, intent(in)  :: beta
+    real(dp), optional, intent(in)  :: y(:)
+
+    real(dp)                        :: beta_local
+    integer                         :: i,n
 
     n = size(x)
 
@@ -58,13 +61,14 @@ end subroutine
 
 
 subroutine axpby_set(z, alpha, x, beta, y)
-    real(dp), intent(inout) :: z(:)
-    real(dp), intent(in) :: alpha
-    real(dp), intent(in) :: x(:)
-    real(dp), optional, intent(in) :: beta
-    real(dp), optional, intent(in) :: y(:)
-    real(dp) :: beta_local
-    integer :: i,n
+    real(dp), intent(inout)         :: z(:)
+    real(dp), intent(in)            :: alpha
+    real(dp), intent(in)            :: x(:)
+    real(dp), optional, intent(in)  :: beta
+    real(dp), optional, intent(in)  :: y(:)
+
+    real(dp)                        :: beta_local
+    integer                         :: i,n
 
     n = size(x)
 
@@ -96,14 +100,15 @@ end subroutine
 
 
 subroutine amxpby(z, alpha, A, x, beta, y)
-    real(dp), intent(inout) :: z(:)
-    real(dp), intent(in) :: alpha
-    type(CSRMAT), intent(in) :: A
-    real(dp), intent(in) :: x(:)
-    real(dp), optional, intent(in) :: beta
-    real(dp), optional, intent(in) :: y(:)
-    real(dp) :: beta_local, partial
-    integer :: i,j,n,c_start,c_end
+    real(dp), intent(inout)         :: z(:)
+    real(dp), intent(in)            :: alpha
+    type(CSRMAT), intent(in)        :: A
+    real(dp), intent(in)            :: x(:)
+    real(dp), optional, intent(in)  :: beta
+    real(dp), optional, intent(in)  :: y(:)
+    
+    real(dp)                        :: beta_local, partial
+    integer                         :: i, j, n, c_start, c_end
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
@@ -155,14 +160,15 @@ end subroutine
 
 
 subroutine amxpby_set(z, alpha, A, x, beta, y)
-    real(dp), intent(inout) :: z(:)
-    real(dp), intent(in) :: alpha
-    type(CSRMAT), intent(in) :: A
-    real(dp), intent(in) :: x(:)
-    real(dp), optional, intent(in) :: beta
-    real(dp), optional, intent(in) :: y(:)
-    real(dp) :: beta_local, partial
-    integer :: i,j,n,c_start,c_end
+    real(dp), intent(inout)         :: z(:)
+    real(dp), intent(in)            :: alpha
+    type(CSRMAT), intent(in)        :: A
+    real(dp), intent(in)            :: x(:)
+    real(dp), optional, intent(in)  :: beta
+    real(dp), optional, intent(in)  :: y(:)
+
+    real(dp)                        :: beta_local, partial
+    integer                         :: i, j, n, c_start, c_end
 
     ! handles for the matrix
     real(dp), pointer :: coef(:) => null()
@@ -232,9 +238,10 @@ end subroutine
 
 
 function inner_prod(x, y) result(z)
-    real(dp) :: z
-    real(dp), dimension(:), intent(in) :: x, y
-    integer :: i,n
+    real(dp), intent(in)    :: x(:), y(:)
+    real(dp)                :: z
+
+    integer                 :: i, n
 
     n = size(x)
 
@@ -254,8 +261,8 @@ end function
 
 
 function norm(x) result(z)
-    real(dp), intent(in) :: x(:)
-    real(dp) :: z
+    real(dp), intent(in)    :: x(:)
+    real(dp)                :: z
     z = sqrt(inner_prod(x, x))
 end function
 
