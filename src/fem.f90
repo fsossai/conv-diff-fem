@@ -21,7 +21,7 @@ subroutine assemble(coord, topo, dt, H, P, q)
     real(dp), target, dimension(3,3)    :: He, Pe
     real(dp), pointer, dimension(:)     :: He_flat, Pe_flat
     real(dp)                            :: area, grad(2,3), diff(2,2), qe, &
-                                           ones3x1(3,1), vel(1,2)
+                                           ones3x1(3,1), vel(1,2), time
     logical                             :: frontier
     real(dp), allocatable               :: local_H(:), local_P(:)
     integer, allocatable                :: offset(:)
@@ -122,6 +122,10 @@ subroutine assemble(coord, topo, dt, H, P, q)
     local_P = 0.0_dp
     !$omp end workshare
     
+    !$omp single
+    time = omp_get_wtime()
+    !$omp end single
+    
     ! Computing bounds 
     i_start = 1 + sum(workload(0:tid))
     i_end = i_start + workload(tid + 1) - 1
@@ -184,7 +188,11 @@ subroutine assemble(coord, topo, dt, H, P, q)
 
     !$omp end parallel
 
+    time = omp_get_wtime() - time
+
     deallocate(duty_of, el_idx, workload)
+
+    print '(a25,en20.3)', 'Elements proc time [s]:', time
 
 end subroutine
 
