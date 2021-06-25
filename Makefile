@@ -4,7 +4,7 @@ include_dir=./include
 source_dir=./src
 
 all: csrmat fem utils blas
-	$(cc) $(flags) -I$(include_dir) $(source_dir)/*.f90 $(source_dir)/*.f
+	$(cc) $(flags) -I$(include_dir) $(source_dir)/*.f90 $(source_dir)/*.f -o solver.out
 
 fem: $(source_dir)/fem.f90 csrmat blas utils
 	$(cc) $(flags) -I$(include_dir) -c $<
